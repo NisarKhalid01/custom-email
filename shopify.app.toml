@@ -19,9 +19,9 @@ scopes = "write_products,read_files,write_files,read_content,write_content"
 
 [auth]
 redirect_urls = [
-  "https://doors-valley-reject-hence.trycloudflare.com/auth/callback",
-  "https://doors-valley-reject-hence.trycloudflare.com/auth/shopify/callback",
-  "https://doors-valley-reject-hence.trycloudflare.com/api/auth/callback"
+  "https://custom-email-pearl.vercel.app/auth/callback",
+  "https://custom-email-pearl.vercel.app/auth/shopify/callback",
+  "https://custom-email-pearl.vercel.app/api/auth/callback"
 ]
 
 [pos]
