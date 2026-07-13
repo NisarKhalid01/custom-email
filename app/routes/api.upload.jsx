@@ -30,14 +30,18 @@ export async function action({ request }) {
     // new custom apps on 2026-01-01), so we use the client credentials grant:
     // exchange the Dev Dashboard app's client id/secret for a short-lived
     // Admin API token at request time. Never hardcode secrets.
+    // The embedded Shopify app boots with SHOPIFY_API_KEY / SHOPIFY_API_SECRET
+    // (same values as the Dev Dashboard Client ID / Client Secret), so read
+    // those here too and keep the CLIENT_* names as a fallback. This avoids
+    // the same secret drifting across two different env var names.
     const SHOP = process.env.SHOPIFY_SHOP;
-    const CLIENT_ID = process.env.SHOPIFY_CLIENT_ID;
-    const CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET;
+    const CLIENT_ID = process.env.SHOPIFY_API_KEY || process.env.SHOPIFY_CLIENT_ID;
+    const CLIENT_SECRET = process.env.SHOPIFY_API_SECRET || process.env.SHOPIFY_CLIENT_SECRET;
     const API_VERSION = process.env.SHOPIFY_API_VERSION || "2025-07";
 
     if (!SHOP || !CLIENT_ID || !CLIENT_SECRET) {
       return json(
-        { error: "Server missing SHOPIFY_SHOP / SHOPIFY_CLIENT_ID / SHOPIFY_CLIENT_SECRET env vars" },
+        { error: "Server missing SHOPIFY_SHOP / SHOPIFY_API_KEY / SHOPIFY_API_SECRET env vars" },
         { status: 500, headers: corsHeaders },
       );
     }
