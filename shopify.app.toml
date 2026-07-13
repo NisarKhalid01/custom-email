@@ -1,0 +1,28 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "7cc30be013440505257411c84bb6c92f"
+name = "Custom Email"
+handle = "custom-email-3"
+application_url = "https://doors-valley-reject-hence.trycloudflare.com"
+embedded = true
+
+[build]
+include_config_on_deploy = true
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2025-04"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products"
+
+[auth]
+redirect_urls = [
+  "https://doors-valley-reject-hence.trycloudflare.com/auth/callback",
+  "https://doors-valley-reject-hence.trycloudflare.com/auth/shopify/callback",
+  "https://doors-valley-reject-hence.trycloudflare.com/api/auth/callback"
+]
+
+[pos]
+embedded = false
