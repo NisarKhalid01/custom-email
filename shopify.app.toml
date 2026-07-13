@@ -3,7 +3,7 @@
 client_id = "7cc30be013440505257411c84bb6c92f"
 name = "Custom Email"
 handle = "custom-email-3"
-application_url = "https://doors-valley-reject-hence.trycloudflare.com"
+application_url = "https://custom-email-pearl.vercel.app"
 embedded = true
 
 [build]
@@ -15,7 +15,7 @@ api_version = "2025-04"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products"
+scopes = "write_products,read_files,write_files,read_content,write_content"
 
 [auth]
 redirect_urls = [
