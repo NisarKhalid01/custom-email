@@ -1,6 +1,15 @@
 import { json } from '@remix-run/node';
 import nodemailer from 'nodemailer';
 
+// Internal notification recipients. Add/remove emails here as needed.
+const NOTIFY_RECIPIENTS = [
+  "sales@logomatcentral.com",
+  "nisar@inventel.net",
+];
+
+// Reply-To address applied to every outgoing email.
+const REPLY_TO = "sales@logomatcentral.com";
+
 export async function action({ request }) {
   if (request.method === 'OPTIONS') {
     return new Response(null, {
@@ -15,6 +24,9 @@ export async function action({ request }) {
 
   try {
     const data = await request.json();
+    // Customer email from the form (may be missing/blank).
+    const customerEmail = (data.email || "").trim();
+    const hasCustomerEmail = customerEmail !== "";
     let transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 587,
@@ -47,26 +59,33 @@ export async function action({ request }) {
     let info = await transporter.sendMail({
       // from: '"Shipping Info" <logomatcentral.sales@gmail.com>',  // OLD
       from: '"Shipping Info" <sales.logomat@gmail.com>',
-      to: "sales@logomatcentral.com",
+      // Reply goes to the customer who submitted the form (falls back to company inbox).
+      replyTo: hasCustomerEmail ? customerEmail : REPLY_TO,
+      to: NOTIFY_RECIPIENTS.join(", "),
       subject: 'Shipping Info',
       html: email,
     });
-    await transporter.sendMail({
-      // from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',  // OLD
-      from: '"Logo Mat Central" <sales.logomat@gmail.com>',
-      to: data.email,
-      subject: 'Thank You from Logo Mat Central',
-      html: `
-        <div style="font-family: Arial, sans-serif; font-size: 15px; color: #333;">
-          <p>Dear ${data.name || 'Customer'},</p>
-          <p>Thank you for choosing <strong>Logo Mat Central</strong>. We have received your email and will get back to you shortly.</p>
-          <p>Our team is reviewing your information and will contact you soon.</p>
-          <br>
-          <p>Best regards,</p>
-          <p><strong>Logo Mat Central Support Team</strong></p>
-        </div>
-      `,
-    });
+    // Only send the customer confirmation when a valid email was provided.
+    if (hasCustomerEmail) {
+      await transporter.sendMail({
+        // from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',  // OLD
+        from: '"Logo Mat Central" <sales.logomat@gmail.com>',
+        // Reply goes to the company inbox so customer replies reach sales.
+        replyTo: REPLY_TO,
+        to: customerEmail,
+        subject: 'Thank You from Logo Mat Central',
+        html: `
+          <div style="font-family: Arial, sans-serif; font-size: 15px; color: #333;">
+            <p>Dear ${data.name || 'Customer'},</p>
+            <p>Thank you for choosing <strong>Logo Mat Central</strong>. We have received your email and will get back to you shortly.</p>
+            <p>Our team is reviewing your information and will contact you soon.</p>
+            <br>
+            <p>Best regards,</p>
+            <p><strong>Logo Mat Central Support Team</strong></p>
+          </div>
+        `,
+      });
+    }
     // let emailStatus = info.accepted.length > 0 ? 'true' : 'false';
     // await prisma.shippingData.create({
     //   data: {
