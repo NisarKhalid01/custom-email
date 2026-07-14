@@ -120,7 +120,7 @@ export async function action({ request }) {
     console.error("Error saving shipping info:", error);
 
     return json(
-      { error: 'Failed to save shipping info' },
+      { error: 'Failed to save shipping info', detail: error?.message }, // TEMP: remove detail after debugging
       {
         status: 500,
         headers: {

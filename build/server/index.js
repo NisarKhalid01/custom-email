@@ -246,7 +246,8 @@ async function action$6({ request }) {
   } catch (error) {
     console.error("Error saving shipping info:", error);
     return json(
-      { error: "Failed to save shipping info" },
+      { error: "Failed to save shipping info", detail: error == null ? void 0 : error.message },
+      // TEMP: remove detail after debugging
       {
         status: 500,
         headers: {
@@ -388,7 +389,8 @@ const action$5 = async ({ request }) => {
   } catch (err) {
     console.error("❌ Email failed:", err);
     return json(
-      { error: "Failed to send email" },
+      { error: "Failed to send email", detail: err == null ? void 0 : err.message },
+      // TEMP: remove detail after debugging
       {
         status: 500,
         headers: {

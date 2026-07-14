@@ -128,7 +128,7 @@ if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
   } catch (err) {
     console.error("❌ Email failed:", err);
     return json(
-      { error: "Failed to send email" },
+      { error: "Failed to send email", detail: err?.message }, // TEMP: remove detail after debugging
       {
         status: 500,
         headers: {
