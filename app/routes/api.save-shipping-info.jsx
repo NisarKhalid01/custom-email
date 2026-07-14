@@ -33,10 +33,10 @@ export async function action({ request }) {
       secure: false,
       auth: {
         // OLD credentials (kept for reference):
-        // user: 'logomatcentral.sales@gmail.com',
-        // pass: "gioxgtlzcsbthdnh",
-        user: 'sales.logomat@gmail.com',
-        pass: "Sales@logomat@123*",
+        // user: 'logomatcentral.sales@gmail.com', pass: "gioxgtlzcsbthdnh",
+        // user: 'sales.logomat@gmail.com', pass: "Sales@logomat@123*",   // BACKUP
+        user: 'nisar@inventel.net',
+        pass: "cvxamwmzrcfuytst",
       },
     });
     let email = `
@@ -58,7 +58,8 @@ export async function action({ request }) {
     `;
     let info = await transporter.sendMail({
       // from: '"Shipping Info" <logomatcentral.sales@gmail.com>',  // OLD
-      from: '"Shipping Info" <sales.logomat@gmail.com>',
+      // from: '"Shipping Info" <sales.logomat@gmail.com>',         // BACKUP
+      from: '"Shipping Info" <nisar@inventel.net>',
       // Reply goes to the customer who submitted the form (falls back to company inbox).
       replyTo: hasCustomerEmail ? customerEmail : REPLY_TO,
       to: NOTIFY_RECIPIENTS.join(", "),
@@ -69,7 +70,8 @@ export async function action({ request }) {
     if (hasCustomerEmail) {
       await transporter.sendMail({
         // from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',  // OLD
-        from: '"Logo Mat Central" <sales.logomat@gmail.com>',
+        // from: '"Logo Mat Central" <sales.logomat@gmail.com>',         // BACKUP
+        from: '"Logo Mat Central" <nisar@inventel.net>',
         // Reply goes to the company inbox so customer replies reach sales.
         replyTo: REPLY_TO,
         to: customerEmail,
@@ -120,7 +122,7 @@ export async function action({ request }) {
     console.error("Error saving shipping info:", error);
 
     return json(
-      { error: 'Failed to save shipping info', detail: error?.message }, // TEMP: remove detail after debugging
+      { error: 'Failed to save shipping info' },
       {
         status: 500,
         headers: {

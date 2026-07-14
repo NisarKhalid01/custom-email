@@ -60,10 +60,10 @@ export const action = async ({ request }) => {
     secure: false,
     auth: {
       // OLD credentials (kept for reference):
-      // user: 'logomatcentral.sales@gmail.com',
-      // pass: "gioxgtlzcsbthdnh",
-      user: 'sales.logomat@gmail.com',
-      pass: "Sales@logomat@123*",
+      // user: 'logomatcentral.sales@gmail.com', pass: "gioxgtlzcsbthdnh",
+      // user: 'sales.logomat@gmail.com', pass: "Sales@logomat@123*",
+      user: 'nisar@inventel.net',
+      pass: "cvxamwmzrcfuytst",
     },
   });
 
@@ -85,7 +85,8 @@ if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
   try {
     await transporter.sendMail({
       // from: '"Mat Order" <logomatcentral.sales@gmail.com>',  // OLD
-      from: '"Mat Order" <sales.logomat@gmail.com>',
+      // from: '"Mat Order" <sales.logomat@gmail.com>',         // BACKUP
+      from: '"Mat Order" <nisar@inventel.net>',
       // Reply goes to the customer who submitted the form (falls back to company inbox).
       replyTo: hasCustomerEmail ? customerEmail : REPLY_TO,
       to: NOTIFY_RECIPIENTS.join(", "),
@@ -97,7 +98,8 @@ if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
     if (hasCustomerEmail) {
       await transporter.sendMail({
         // from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',  // OLD
-        from: '"Logo Mat Central" <sales.logomat@gmail.com>',
+        // from: '"Logo Mat Central" <sales.logomat@gmail.com>',         // BACKUP
+        from: '"Logo Mat Central" <nisar@inventel.net>',
         // Reply goes to the company inbox so customer replies reach sales.
         replyTo: REPLY_TO,
         to: customerEmail,
@@ -128,7 +130,7 @@ if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
   } catch (err) {
     console.error("❌ Email failed:", err);
     return json(
-      { error: "Failed to send email", detail: err?.message }, // TEMP: remove detail after debugging
+      { error: "Failed to send email" },
       {
         status: 500,
         headers: {
