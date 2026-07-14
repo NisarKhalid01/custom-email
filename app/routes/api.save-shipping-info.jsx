@@ -20,8 +20,11 @@ export async function action({ request }) {
       port: 587,
       secure: false,
       auth: {
-        user: 'logomatcentral.sales@gmail.com',
-        pass: "gioxgtlzcsbthdnh",
+        // OLD credentials (kept for reference):
+        // user: 'logomatcentral.sales@gmail.com',
+        // pass: "gioxgtlzcsbthdnh",
+        user: 'sales.logomat@gmail.com',
+        pass: "Sales@logomat@123*",
       },
     });
     let email = `
@@ -42,13 +45,15 @@ export async function action({ request }) {
       <p>Size: ${data.variant_id}</p>
     `;
     let info = await transporter.sendMail({
-      from: '"Shipping Info" <logomatcentral.sales@gmail.com>',
+      // from: '"Shipping Info" <logomatcentral.sales@gmail.com>',  // OLD
+      from: '"Shipping Info" <sales.logomat@gmail.com>',
       to: "sales@logomatcentral.com",
       subject: 'Shipping Info',
       html: email,
     });
     await transporter.sendMail({
-      from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',
+      // from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',  // OLD
+      from: '"Logo Mat Central" <sales.logomat@gmail.com>',
       to: data.email,
       subject: 'Thank You from Logo Mat Central',
       html: `

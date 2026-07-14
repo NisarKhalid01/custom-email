@@ -46,8 +46,11 @@ export const action = async ({ request }) => {
     port: 587,
     secure: false,
     auth: {
-      user: 'logomatcentral.sales@gmail.com',
-      pass: "gioxgtlzcsbthdnh",
+      // OLD credentials (kept for reference):
+      // user: 'logomatcentral.sales@gmail.com',
+      // pass: "gioxgtlzcsbthdnh",
+      user: 'sales.logomat@gmail.com',
+      pass: "Sales@logomat@123*",
     },
   });
 
@@ -68,14 +71,16 @@ if (data.variant_id) mydata += `<p>Size: ${data.variant_id}</p>`;
 if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
   try {
     await transporter.sendMail({
-      from: '"Mat Order" <logomatcentral.sales@gmail.com>',
+      // from: '"Mat Order" <logomatcentral.sales@gmail.com>',  // OLD
+      from: '"Mat Order" <sales.logomat@gmail.com>',
       to: "sales@logomatcentral.com",
       subject: "New Mat Order Submission",
       html: mydata, 
       attachments,
     });
     await transporter.sendMail({
-      from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',
+      // from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',  // OLD
+      from: '"Logo Mat Central" <sales.logomat@gmail.com>',
       to: data.email,
       subject: 'Thank You from Logo Mat Central',
       html: `

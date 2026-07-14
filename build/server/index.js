@@ -173,8 +173,11 @@ async function action$6({ request }) {
       port: 587,
       secure: false,
       auth: {
-        user: "logomatcentral.sales@gmail.com",
-        pass: "gioxgtlzcsbthdnh"
+        // OLD credentials (kept for reference):
+        // user: 'logomatcentral.sales@gmail.com',
+        // pass: "gioxgtlzcsbthdnh",
+        user: "sales.logomat@gmail.com",
+        pass: "Sales@logomat@123*"
       }
     });
     let email = `
@@ -195,13 +198,15 @@ async function action$6({ request }) {
       <p>Size: ${data.variant_id}</p>
     `;
     let info = await transporter.sendMail({
-      from: '"Shipping Info" <logomatcentral.sales@gmail.com>',
+      // from: '"Shipping Info" <logomatcentral.sales@gmail.com>',  // OLD
+      from: '"Shipping Info" <sales.logomat@gmail.com>',
       to: "sales@logomatcentral.com",
       subject: "Shipping Info",
       html: email
     });
     await transporter.sendMail({
-      from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',
+      // from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',  // OLD
+      from: '"Logo Mat Central" <sales.logomat@gmail.com>',
       to: data.email,
       subject: "Thank You from Logo Mat Central",
       html: `
@@ -299,8 +304,11 @@ const action$5 = async ({ request }) => {
     port: 587,
     secure: false,
     auth: {
-      user: "logomatcentral.sales@gmail.com",
-      pass: "gioxgtlzcsbthdnh"
+      // OLD credentials (kept for reference):
+      // user: 'logomatcentral.sales@gmail.com',
+      // pass: "gioxgtlzcsbthdnh",
+      user: "sales.logomat@gmail.com",
+      pass: "Sales@logomat@123*"
     }
   });
   let mydata = `<h1><b>New Logo Mat Order Submission</b></h1>`;
@@ -318,14 +326,16 @@ const action$5 = async ({ request }) => {
   if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
   try {
     await transporter.sendMail({
-      from: '"Mat Order" <logomatcentral.sales@gmail.com>',
+      // from: '"Mat Order" <logomatcentral.sales@gmail.com>',  // OLD
+      from: '"Mat Order" <sales.logomat@gmail.com>',
       to: "sales@logomatcentral.com",
       subject: "New Mat Order Submission",
       html: mydata,
       attachments
     });
     await transporter.sendMail({
-      from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',
+      // from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',  // OLD
+      from: '"Logo Mat Central" <sales.logomat@gmail.com>',
       to: data.email,
       subject: "Thank You from Logo Mat Central",
       html: `
