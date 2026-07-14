@@ -239,7 +239,7 @@ async function action$6({ request }) {
     );
   }
 }
-async function loader$b({ request }) {
+async function loader$c({ request }) {
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -260,7 +260,7 @@ async function loader$b({ request }) {
 const route3 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   action: action$6,
-  loader: loader$b
+  loader: loader$c
 }, Symbol.toStringTag, { value: "Module" }));
 const action$5 = async ({ request }) => {
   if (request.method === "OPTIONS") {
@@ -363,7 +363,7 @@ const action$5 = async ({ request }) => {
     );
   }
 };
-const loader$a = async ({ request }) => {
+const loader$b = async ({ request }) => {
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -384,7 +384,7 @@ const loader$a = async ({ request }) => {
 const route4 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   action: action$5,
-  loader: loader$a
+  loader: loader$b
 }, Symbol.toStringTag, { value: "Module" }));
 const runtime$1 = "nodejs";
 const corsHeaders$3 = {
@@ -439,6 +439,107 @@ const route5 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   __proto__: null,
   action: action$4,
   runtime: runtime$1
+}, Symbol.toStringTag, { value: "Module" }));
+const APP_ORIGIN = "https://custom-email-pearl.vercel.app";
+const SUCCESS_HTML = '<div style="padding:20px;border:1px solid #cfe8cf;background:#eaf6ea;border-radius:8px;text-align:center;color:#2e7d32;font-family:Arial,sans-serif;"><h3 style="margin:0 0 8px;">Thank you! Your request has been submitted.</h3><p style="margin:0;">Our team will get back to you shortly.</p></div>';
+const SCRIPT = `
+(function () {
+  var SUCCESS_HTML = ${JSON.stringify(SUCCESS_HTML)};
+  var SAVE_SHIPPING_INFO_URL = ${JSON.stringify(APP_ORIGIN + "/api/save-shipping-info")};
+  var SAVE_SHIPPING_URL = ${JSON.stringify(APP_ORIGIN + "/api/save-shipping")};
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var openBtn1 = document.getElementById('openModal_shipping');
+    var openBtn1_2 = document.getElementById('openModal_shipping_2');
+    var modal1 = document.getElementById('myModalshipping');
+    var openBtn2 = document.getElementById('openModal_shipping2');   // dead: no such element
+    var modal2 = document.getElementById('myModalshipping2');        // dead: no such element
+    if (openBtn1 && modal1) openBtn1.addEventListener('click', function () { modal1.style.display = 'block'; });
+    if (openBtn1_2 && modal1) openBtn1_2.addEventListener('click', function () { modal1.style.display = 'block'; });
+    if (openBtn2 && modal2) openBtn2.addEventListener('click', function () { modal2.style.display = 'block'; });
+    window.addEventListener('click', function (event) {
+      if (event.target === modal1) modal1.style.display = 'none';
+      if (event.target === modal2) modal2.style.display = 'none';
+    });
+  });
+
+  // Global handlers referenced by inline onclick="" in the theme markup.
+  window.closeModal1 = function () {
+    var m = document.getElementById('myModalshipping');
+    if (m) m.style.display = 'none';
+  };
+  window.closeModal2 = function () { // dead: no such element
+    var m = document.getElementById('myModalshipping2');
+    if (m) m.style.display = 'none';
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var form1 = document.getElementById('shipping-form');
+    var form2 = document.getElementById('shipping-form2');
+
+    if (form1) {
+      form1.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var formData = new FormData(form1);
+        var btn = document.getElementById('submitBtn1');
+        var text = btn ? btn.querySelector('.btn-text') : null;
+        var loader = btn ? btn.querySelector('.btn-loader') : null;
+        if (text) text.style.display = 'none';
+        if (loader) loader.style.display = 'inline-block';
+        if (btn) btn.style.padding = '23px';
+        var data = {
+          title: formData.get('title'), company: formData.get('company'), street: formData.get('street'),
+          apt: formData.get('apt'), city: formData.get('city'), state: formData.get('state'),
+          zip: formData.get('zip'), loading_dock: formData.get('loading_dock'), liftgate: formData.get('liftgate'),
+          email: formData.get('email'), phone: formData.get('phone'), cartons: formData.get('cartons'),
+          comments: formData.get('comments'), variant_id: formData.get('variant_id')
+        };
+        fetch(SAVE_SHIPPING_INFO_URL, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+        })
+          .then(function (response) {
+            if (response.ok) { form1.innerHTML = SUCCESS_HTML; }
+            else { alert('Failed to save data.'); }
+          })
+          .catch(function (error) { console.error('Backend error:', error); alert('Error saving data.'); });
+      });
+    }
+
+    if (form2) {
+      form2.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var formData2 = new FormData(form2);
+        var btn = document.getElementById('submitBtn2');
+        var text = btn ? btn.querySelector('.btn-text') : null;
+        var loader = btn ? btn.querySelector('.btn-loader') : null;
+        if (text) text.style.display = 'none';
+        if (loader) loader.style.display = 'inline-block';
+        if (btn) btn.style.padding = '23px';
+        fetch(SAVE_SHIPPING_URL, {
+          method: 'POST', body: formData2
+        })
+          .then(function (response) { return response.json(); })
+          .then(function (result) { form2.innerHTML = SUCCESS_HTML; })
+          .catch(function (error) { console.error('Error submitting form2:', error); });
+      });
+    }
+  });
+})();
+`;
+const loader$a = async () => {
+  return new Response(SCRIPT, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/javascript; charset=utf-8",
+      // Cache at the edge/browser for 5 min; tweak as needed.
+      "Cache-Control": "public, max-age=300",
+      "Access-Control-Allow-Origin": "*"
+    }
+  });
+};
+const route6 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  loader: loader$a
 }, Symbol.toStringTag, { value: "Module" }));
 const runtime = "nodejs";
 const corsHeaders$2 = {
@@ -503,7 +604,7 @@ async function action$3({ request }) {
   }
   return json(target, { headers: corsHeaders$2 });
 }
-const route6 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route7 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   action: action$3,
   loader: loader$9,
@@ -739,7 +840,7 @@ async function action$2({ request }) {
     );
   }
 }
-const route7 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route8 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   action: action$2,
   loader: loader$8
@@ -767,12 +868,12 @@ async function action$1({ request }) {
       return json({ error: "No file uploaded" }, { status: 400, headers: corsHeaders });
     }
     const SHOP = process.env.SHOPIFY_SHOP;
-    const CLIENT_ID = process.env.SHOPIFY_CLIENT_ID;
-    const CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET;
+    const CLIENT_ID = process.env.SHOPIFY_API_KEY || process.env.SHOPIFY_CLIENT_ID;
+    const CLIENT_SECRET = process.env.SHOPIFY_API_SECRET || process.env.SHOPIFY_CLIENT_SECRET;
     const API_VERSION = process.env.SHOPIFY_API_VERSION || "2025-07";
     if (!SHOP || !CLIENT_ID || !CLIENT_SECRET) {
       return json(
-        { error: "Server missing SHOPIFY_SHOP / SHOPIFY_CLIENT_ID / SHOPIFY_CLIENT_SECRET env vars" },
+        { error: "Server missing SHOPIFY_SHOP / SHOPIFY_API_KEY / SHOPIFY_API_SECRET env vars" },
         { status: 500, headers: corsHeaders }
       );
     }
@@ -922,7 +1023,7 @@ async function action$1({ request }) {
     return json({ error: err.message }, { status: 500, headers: corsHeaders });
   }
 }
-const route8 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route9 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   action: action$1,
   loader: loader$7
@@ -974,7 +1075,7 @@ function Auth() {
     /* @__PURE__ */ jsx(Button, { submit: true, children: "Log in" })
   ] }) }) }) }) });
 }
-const route9 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route10 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   action,
   default: Auth,
@@ -985,7 +1086,7 @@ const loader$5 = async ({ request }) => {
   await authenticate.admin(request);
   return null;
 };
-const route10 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route11 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   loader: loader$5
 }, Symbol.toStringTag, { value: "Module" }));
@@ -993,7 +1094,7 @@ const loader$4 = async ({ request }) => {
   await authenticate.admin(request);
   return null;
 };
-const route11 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route12 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   loader: loader$4
 }, Symbol.toStringTag, { value: "Module" }));
@@ -1053,7 +1154,7 @@ function App$1() {
     ] })
   ] }) });
 }
-const route12 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route13 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: App$1,
   loader: loader$3
@@ -1076,7 +1177,7 @@ function ErrorBoundary() {
 const headers = (headersArgs) => {
   return boundary.headers(headersArgs);
 };
-const route13 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route14 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   ErrorBoundary,
   default: App,
@@ -1175,7 +1276,7 @@ function Index$1() {
     }
   );
 }
-const route14 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route15 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: Index$1,
   loader: loader$1
@@ -1218,12 +1319,12 @@ function Index() {
     }
   ) }) });
 }
-const route15 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route16 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: Index,
   loader
 }, Symbol.toStringTag, { value: "Module" }));
-const serverManifest = { "entry": { "module": "/assets/entry.client-CCetTxSu.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/root-CIjoxbYf.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": [] }, "routes/webhooks.app.scopes_update": { "id": "routes/webhooks.app.scopes_update", "parentId": "root", "path": "webhooks/app/scopes_update", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.scopes_update-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/webhooks.app.uninstalled": { "id": "routes/webhooks.app.uninstalled", "parentId": "root", "path": "webhooks/app/uninstalled", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.uninstalled-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping-info": { "id": "routes/api.save-shipping-info", "parentId": "root", "path": "api/save-shipping-info", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-info-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping": { "id": "routes/api.save-shipping", "parentId": "root", "path": "api/save-shipping", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.register": { "id": "routes/api.eps.register", "parentId": "root", "path": "api/eps/register", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.register-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.staged": { "id": "routes/api.eps.staged", "parentId": "root", "path": "api/eps/staged", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.staged-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.upload": { "id": "routes/api.eps.upload", "parentId": "root", "path": "api/eps/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.upload": { "id": "routes/api.upload", "parentId": "root", "path": "api/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.login": { "id": "routes/auth.login", "parentId": "root", "path": "auth/login", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-BBBW7PgP.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/styles-CdTkGOEN.js", "/assets/Page-B89eIvAU.js", "/assets/context-B7xVpkok.js"], "css": [] }, "routes/emailsend": { "id": "routes/emailsend", "parentId": "root", "path": "emailsend", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/emailsend-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.$": { "id": "routes/auth.$", "parentId": "root", "path": "auth/*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/auth._-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/_index": { "id": "routes/_index", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-BJV-LXEe.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": ["/assets/route-Cnm7FvdT.css"] }, "routes/app": { "id": "routes/app", "parentId": "root", "path": "app", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": true, "module": "/assets/app-BkeIaF_f.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/styles-CdTkGOEN.js", "/assets/context-B7xVpkok.js"], "css": [] }, "routes/app.shipping-data.$id": { "id": "routes/app.shipping-data.$id", "parentId": "routes/app", "path": "shipping-data/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app.shipping-data._id-DTp0ZqJW.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/Page-B89eIvAU.js", "/assets/LegacyCard-CO48VClw.js", "/assets/context-B7xVpkok.js"], "css": [] }, "routes/app._index": { "id": "routes/app._index", "parentId": "routes/app", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app._index-BG5NWlvp.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/Page-B89eIvAU.js", "/assets/LegacyCard-CO48VClw.js", "/assets/context-B7xVpkok.js"], "css": [] } }, "url": "/assets/manifest-89b7add8.js", "version": "89b7add8" };
+const serverManifest = { "entry": { "module": "/assets/entry.client-CCetTxSu.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/root-CIjoxbYf.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": [] }, "routes/webhooks.app.scopes_update": { "id": "routes/webhooks.app.scopes_update", "parentId": "root", "path": "webhooks/app/scopes_update", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.scopes_update-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/webhooks.app.uninstalled": { "id": "routes/webhooks.app.uninstalled", "parentId": "root", "path": "webhooks/app/uninstalled", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.uninstalled-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping-info": { "id": "routes/api.save-shipping-info", "parentId": "root", "path": "api/save-shipping-info", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-info-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping": { "id": "routes/api.save-shipping", "parentId": "root", "path": "api/save-shipping", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.register": { "id": "routes/api.eps.register", "parentId": "root", "path": "api/eps/register", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.register-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/[quote-form.js]": { "id": "routes/[quote-form.js]", "parentId": "root", "path": "quote-form.js", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/_quote-form.js_-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.staged": { "id": "routes/api.eps.staged", "parentId": "root", "path": "api/eps/staged", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.staged-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.upload": { "id": "routes/api.eps.upload", "parentId": "root", "path": "api/eps/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.upload": { "id": "routes/api.upload", "parentId": "root", "path": "api/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.login": { "id": "routes/auth.login", "parentId": "root", "path": "auth/login", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-BBBW7PgP.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/styles-CdTkGOEN.js", "/assets/Page-B89eIvAU.js", "/assets/context-B7xVpkok.js"], "css": [] }, "routes/emailsend": { "id": "routes/emailsend", "parentId": "root", "path": "emailsend", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/emailsend-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.$": { "id": "routes/auth.$", "parentId": "root", "path": "auth/*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/auth._-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/_index": { "id": "routes/_index", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-BJV-LXEe.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": ["/assets/route-Cnm7FvdT.css"] }, "routes/app": { "id": "routes/app", "parentId": "root", "path": "app", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": true, "module": "/assets/app-BkeIaF_f.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/styles-CdTkGOEN.js", "/assets/context-B7xVpkok.js"], "css": [] }, "routes/app.shipping-data.$id": { "id": "routes/app.shipping-data.$id", "parentId": "routes/app", "path": "shipping-data/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app.shipping-data._id-DTp0ZqJW.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/Page-B89eIvAU.js", "/assets/LegacyCard-CO48VClw.js", "/assets/context-B7xVpkok.js"], "css": [] }, "routes/app._index": { "id": "routes/app._index", "parentId": "routes/app", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app._index-BG5NWlvp.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/Page-B89eIvAU.js", "/assets/LegacyCard-CO48VClw.js", "/assets/context-B7xVpkok.js"], "css": [] } }, "url": "/assets/manifest-4b240e3f.js", "version": "4b240e3f" };
 const mode = "production";
 const assetsBuildDirectory = "build\\client";
 const basename = "/";
@@ -1280,13 +1381,21 @@ const routes = {
     caseSensitive: void 0,
     module: route5
   },
+  "routes/[quote-form.js]": {
+    id: "routes/[quote-form.js]",
+    parentId: "root",
+    path: "quote-form.js",
+    index: void 0,
+    caseSensitive: void 0,
+    module: route6
+  },
   "routes/api.eps.staged": {
     id: "routes/api.eps.staged",
     parentId: "root",
     path: "api/eps/staged",
     index: void 0,
     caseSensitive: void 0,
-    module: route6
+    module: route7
   },
   "routes/api.eps.upload": {
     id: "routes/api.eps.upload",
@@ -1294,7 +1403,7 @@ const routes = {
     path: "api/eps/upload",
     index: void 0,
     caseSensitive: void 0,
-    module: route7
+    module: route8
   },
   "routes/api.upload": {
     id: "routes/api.upload",
@@ -1302,7 +1411,7 @@ const routes = {
     path: "api/upload",
     index: void 0,
     caseSensitive: void 0,
-    module: route8
+    module: route9
   },
   "routes/auth.login": {
     id: "routes/auth.login",
@@ -1310,7 +1419,7 @@ const routes = {
     path: "auth/login",
     index: void 0,
     caseSensitive: void 0,
-    module: route9
+    module: route10
   },
   "routes/emailsend": {
     id: "routes/emailsend",
@@ -1318,7 +1427,7 @@ const routes = {
     path: "emailsend",
     index: void 0,
     caseSensitive: void 0,
-    module: route10
+    module: route11
   },
   "routes/auth.$": {
     id: "routes/auth.$",
@@ -1326,7 +1435,7 @@ const routes = {
     path: "auth/*",
     index: void 0,
     caseSensitive: void 0,
-    module: route11
+    module: route12
   },
   "routes/_index": {
     id: "routes/_index",
@@ -1334,7 +1443,7 @@ const routes = {
     path: void 0,
     index: true,
     caseSensitive: void 0,
-    module: route12
+    module: route13
   },
   "routes/app": {
     id: "routes/app",
@@ -1342,7 +1451,7 @@ const routes = {
     path: "app",
     index: void 0,
     caseSensitive: void 0,
-    module: route13
+    module: route14
   },
   "routes/app.shipping-data.$id": {
     id: "routes/app.shipping-data.$id",
@@ -1350,7 +1459,7 @@ const routes = {
     path: "shipping-data/:id",
     index: void 0,
     caseSensitive: void 0,
-    module: route14
+    module: route15
   },
   "routes/app._index": {
     id: "routes/app._index",
@@ -1358,7 +1467,7 @@ const routes = {
     path: void 0,
     index: true,
     caseSensitive: void 0,
-    module: route15
+    module: route16
   }
 };
 export {
