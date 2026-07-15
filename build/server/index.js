@@ -156,8 +156,7 @@ const route2 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   action: action$7
 }, Symbol.toStringTag, { value: "Module" }));
 const NOTIFY_RECIPIENTS$1 = [
-  "sales@logomatcentral.com",
-  "nisar@inventel.net"
+  "sales@logomatcentral.com"
 ];
 const REPLY_TO$1 = "sales@logomatcentral.com";
 async function action$6({ request }) {
@@ -180,11 +179,10 @@ async function action$6({ request }) {
       port: 587,
       secure: false,
       auth: {
-        // OLD credentials (kept for reference):
-        // user: 'logomatcentral.sales@gmail.com', pass: "gioxgtlzcsbthdnh",
-        // user: 'sales.logomat@gmail.com', pass: "Sales@logomat@123*",   // BACKUP
-        user: "nisar@inventel.net",
-        pass: "cvxamwmzrcfuytst"
+        // BACKUP senders (kept for reference):
+        // user: 'sales.logomat@gmail.com', pass: "Sales@logomat@123*",
+        user: "logomatcentral.sales@gmail.com",
+        pass: "jaotjhnzpzkxjani"
       }
     });
     let email = `
@@ -205,9 +203,8 @@ async function action$6({ request }) {
       <p>Size: ${data.variant_id}</p>
     `;
     let info = await transporter.sendMail({
-      // from: '"Shipping Info" <logomatcentral.sales@gmail.com>',  // OLD
-      // from: '"Shipping Info" <sales.logomat@gmail.com>',         // BACKUP
-      from: '"Shipping Info" <nisar@inventel.net>',
+      // from: '"Shipping Info" <sales.logomat@gmail.com>',   // BACKUP
+      from: '"Shipping Info" <logomatcentral.sales@gmail.com>',
       // Reply goes to the customer who submitted the form (falls back to company inbox).
       replyTo: hasCustomerEmail ? customerEmail : REPLY_TO$1,
       to: NOTIFY_RECIPIENTS$1.join(", "),
@@ -216,9 +213,8 @@ async function action$6({ request }) {
     });
     if (hasCustomerEmail) {
       await transporter.sendMail({
-        // from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',  // OLD
-        // from: '"Logo Mat Central" <sales.logomat@gmail.com>',         // BACKUP
-        from: '"Logo Mat Central" <nisar@inventel.net>',
+        // from: '"Logo Mat Central" <sales.logomat@gmail.com>',   // BACKUP
+        from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',
         // Reply goes to the company inbox so customer replies reach sales.
         replyTo: REPLY_TO$1,
         to: customerEmail,
@@ -283,8 +279,7 @@ const route3 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   loader: loader$b
 }, Symbol.toStringTag, { value: "Module" }));
 const NOTIFY_RECIPIENTS = [
-  "sales@logomatcentral.com",
-  "nisar@inventel.net"
+  "sales@logomatcentral.com"
 ];
 const REPLY_TO = "sales@logomatcentral.com";
 const action$5 = async ({ request }) => {
@@ -326,11 +321,10 @@ const action$5 = async ({ request }) => {
     port: 587,
     secure: false,
     auth: {
-      // OLD credentials (kept for reference):
-      // user: 'logomatcentral.sales@gmail.com', pass: "gioxgtlzcsbthdnh",
+      // BACKUP senders (kept for reference):
       // user: 'sales.logomat@gmail.com', pass: "Sales@logomat@123*",
-      user: "nisar@inventel.net",
-      pass: "cvxamwmzrcfuytst"
+      user: "logomatcentral.sales@gmail.com",
+      pass: "jaotjhnzpzkxjani"
     }
   });
   let mydata = `<h1><b>New Logo Mat Order Submission</b></h1>`;
@@ -348,9 +342,8 @@ const action$5 = async ({ request }) => {
   if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
   try {
     await transporter.sendMail({
-      // from: '"Mat Order" <logomatcentral.sales@gmail.com>',  // OLD
-      // from: '"Mat Order" <sales.logomat@gmail.com>',         // BACKUP
-      from: '"Mat Order" <nisar@inventel.net>',
+      // from: '"Mat Order" <sales.logomat@gmail.com>',   // BACKUP
+      from: '"Mat Order" <logomatcentral.sales@gmail.com>',
       // Reply goes to the customer who submitted the form (falls back to company inbox).
       replyTo: hasCustomerEmail ? customerEmail : REPLY_TO,
       to: NOTIFY_RECIPIENTS.join(", "),
@@ -360,9 +353,8 @@ const action$5 = async ({ request }) => {
     });
     if (hasCustomerEmail) {
       await transporter.sendMail({
-        // from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',  // OLD
-        // from: '"Logo Mat Central" <sales.logomat@gmail.com>',         // BACKUP
-        from: '"Logo Mat Central" <nisar@inventel.net>',
+        // from: '"Logo Mat Central" <sales.logomat@gmail.com>',   // BACKUP
+        from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',
         // Reply goes to the company inbox so customer replies reach sales.
         replyTo: REPLY_TO,
         to: customerEmail,

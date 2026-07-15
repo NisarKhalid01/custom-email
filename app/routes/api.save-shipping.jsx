@@ -4,7 +4,6 @@ import nodemailer from "nodemailer";
 // Internal notification recipients. Add/remove emails here as needed.
 const NOTIFY_RECIPIENTS = [
   "sales@logomatcentral.com",
-  "nisar@inventel.net",
 ];
 
 // Reply-To address applied to every outgoing email.
@@ -59,11 +58,10 @@ export const action = async ({ request }) => {
     port: 587,
     secure: false,
     auth: {
-      // OLD credentials (kept for reference):
-      // user: 'logomatcentral.sales@gmail.com', pass: "gioxgtlzcsbthdnh",
+      // BACKUP senders (kept for reference):
       // user: 'sales.logomat@gmail.com', pass: "Sales@logomat@123*",
-      user: 'nisar@inventel.net',
-      pass: "cvxamwmzrcfuytst",
+      user: 'logomatcentral.sales@gmail.com',
+      pass: "jaotjhnzpzkxjani",
     },
   });
 
@@ -84,9 +82,8 @@ if (data.variant_id) mydata += `<p>Size: ${data.variant_id}</p>`;
 if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
   try {
     await transporter.sendMail({
-      // from: '"Mat Order" <logomatcentral.sales@gmail.com>',  // OLD
-      // from: '"Mat Order" <sales.logomat@gmail.com>',         // BACKUP
-      from: '"Mat Order" <nisar@inventel.net>',
+      // from: '"Mat Order" <sales.logomat@gmail.com>',   // BACKUP
+      from: '"Mat Order" <logomatcentral.sales@gmail.com>',
       // Reply goes to the customer who submitted the form (falls back to company inbox).
       replyTo: hasCustomerEmail ? customerEmail : REPLY_TO,
       to: NOTIFY_RECIPIENTS.join(", "),
@@ -97,9 +94,8 @@ if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
     // Only send the customer confirmation when a valid email was provided.
     if (hasCustomerEmail) {
       await transporter.sendMail({
-        // from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',  // OLD
-        // from: '"Logo Mat Central" <sales.logomat@gmail.com>',         // BACKUP
-        from: '"Logo Mat Central" <nisar@inventel.net>',
+        // from: '"Logo Mat Central" <sales.logomat@gmail.com>',   // BACKUP
+        from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',
         // Reply goes to the company inbox so customer replies reach sales.
         replyTo: REPLY_TO,
         to: customerEmail,

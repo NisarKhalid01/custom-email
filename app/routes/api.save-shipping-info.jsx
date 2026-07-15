@@ -4,7 +4,6 @@ import nodemailer from 'nodemailer';
 // Internal notification recipients. Add/remove emails here as needed.
 const NOTIFY_RECIPIENTS = [
   "sales@logomatcentral.com",
-  "nisar@inventel.net",
 ];
 
 // Reply-To address applied to every outgoing email.
@@ -32,11 +31,10 @@ export async function action({ request }) {
       port: 587,
       secure: false,
       auth: {
-        // OLD credentials (kept for reference):
-        // user: 'logomatcentral.sales@gmail.com', pass: "gioxgtlzcsbthdnh",
-        // user: 'sales.logomat@gmail.com', pass: "Sales@logomat@123*",   // BACKUP
-        user: 'nisar@inventel.net',
-        pass: "cvxamwmzrcfuytst",
+        // BACKUP senders (kept for reference):
+        // user: 'sales.logomat@gmail.com', pass: "Sales@logomat@123*",
+        user: 'logomatcentral.sales@gmail.com',
+        pass: "jaotjhnzpzkxjani",
       },
     });
     let email = `
@@ -57,9 +55,8 @@ export async function action({ request }) {
       <p>Size: ${data.variant_id}</p>
     `;
     let info = await transporter.sendMail({
-      // from: '"Shipping Info" <logomatcentral.sales@gmail.com>',  // OLD
-      // from: '"Shipping Info" <sales.logomat@gmail.com>',         // BACKUP
-      from: '"Shipping Info" <nisar@inventel.net>',
+      // from: '"Shipping Info" <sales.logomat@gmail.com>',   // BACKUP
+      from: '"Shipping Info" <logomatcentral.sales@gmail.com>',
       // Reply goes to the customer who submitted the form (falls back to company inbox).
       replyTo: hasCustomerEmail ? customerEmail : REPLY_TO,
       to: NOTIFY_RECIPIENTS.join(", "),
@@ -69,9 +66,8 @@ export async function action({ request }) {
     // Only send the customer confirmation when a valid email was provided.
     if (hasCustomerEmail) {
       await transporter.sendMail({
-        // from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',  // OLD
-        // from: '"Logo Mat Central" <sales.logomat@gmail.com>',         // BACKUP
-        from: '"Logo Mat Central" <nisar@inventel.net>',
+        // from: '"Logo Mat Central" <sales.logomat@gmail.com>',   // BACKUP
+        from: '"Logo Mat Central" <logomatcentral.sales@gmail.com>',
         // Reply goes to the company inbox so customer replies reach sales.
         replyTo: REPLY_TO,
         to: customerEmail,
