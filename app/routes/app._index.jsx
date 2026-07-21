@@ -84,7 +84,7 @@ export default function Index() {
   });
 
   return (
-    <Page title="Form Submissions">
+    <Page title="Form Submissions" fullWidth>
       {error && (
         <div style={{ marginBottom: "1rem" }}>
           <Banner tone="critical" title="Could not load submissions">
