@@ -1,16 +1,6 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "@remix-run/react";
-import { useEffect } from "react";
 
 export default function App() {
-  useEffect(() => {
-    // Initialize EmailJS when the component mounts
-    (function () {
-      emailjs.init({
-        publicKey: "q6ITPQW2dDGcPkce9", // Replace with your actual public key
-      });
-    })();
-  }, []);
-
   return (
     <html lang="en">
       <head>
@@ -28,11 +18,6 @@ export default function App() {
         <Outlet />
         <ScrollRestoration />
         <Scripts />
-        {/* EmailJS script should be added in the body for proper execution */}
-        <script
-          type="text/javascript"
-          src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"
-        ></script>
       </body>
     </html>
   );
