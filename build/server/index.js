@@ -11,7 +11,8 @@ import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prism
 import { PrismaClient } from "@prisma/client";
 import { useEffect, useState } from "react";
 import nodemailer from "nodemailer";
-import { AppProvider, Page, Card, FormLayout, Text, TextField, Button, LegacyCard, BlockStack, Divider, Badge, Tooltip, DataTable } from "@shopify/polaris";
+import postgres from "postgres";
+import { AppProvider, Page, Card, FormLayout, Text, TextField, Button, LegacyCard, EmptyState, BlockStack, Link as Link$1, InlineStack, Thumbnail, Divider, Badge, Tooltip, Banner, DataTable } from "@shopify/polaris";
 import { AppProvider as AppProvider$1 } from "@shopify/shopify-app-remix/react";
 import { NavMenu } from "@shopify/app-bridge-react";
 import { ViewIcon } from "@shopify/polaris-icons";
@@ -155,11 +156,77 @@ const route2 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   __proto__: null,
   action: action$7
 }, Symbol.toStringTag, { value: "Module" }));
+const FORM_SUBMISSIONS_TABLE = "form_submissions";
+let _sql = null;
+function getSql() {
+  const url = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error(
+      "Database not configured: set DATABASE_URL (or SUPABASE_DB_URL) env var"
+    );
+  }
+  if (!_sql) {
+    _sql = postgres(url, {
+      // pgbouncer transaction pooling can't use prepared statements.
+      prepare: false,
+      ssl: "require",
+      // Keep the serverless connection footprint small.
+      max: 1,
+      idle_timeout: 20
+    });
+  }
+  return _sql;
+}
+const COLUMNS = [
+  "form_type",
+  "email",
+  "phone",
+  "company",
+  "name",
+  "product_url",
+  "product_handle",
+  "product_title",
+  "media_url",
+  "media_name",
+  "email_status",
+  "payload"
+];
+async function insertFormSubmission(row) {
+  const sql = getSql();
+  const record = {};
+  for (const col of COLUMNS) {
+    if (row[col] !== void 0) {
+      record[col] = col === "payload" ? sql.json(row[col] ?? {}) : row[col];
+    }
+  }
+  const [inserted] = await sql`
+    insert into ${sql(FORM_SUBMISSIONS_TABLE)} ${sql(record)}
+    returning id
+  `;
+  return inserted;
+}
+async function listFormSubmissions() {
+  const sql = getSql();
+  return sql`
+    select * from ${sql(FORM_SUBMISSIONS_TABLE)}
+    order by created_at desc
+  `;
+}
+async function getFormSubmission(id) {
+  const sql = getSql();
+  const [row] = await sql`
+    select * from ${sql(FORM_SUBMISSIONS_TABLE)}
+    where id = ${id}
+    limit 1
+  `;
+  return row ?? null;
+}
 const NOTIFY_RECIPIENTS$1 = [
   "sales@logomatcentral.com"
 ];
 const REPLY_TO$1 = "sales@logomatcentral.com";
 async function action$6({ request }) {
+  var _a2;
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -174,6 +241,8 @@ async function action$6({ request }) {
     const data = await request.json();
     const customerEmail = (data.email || "").trim();
     const hasCustomerEmail = customerEmail !== "";
+    const productUrl = data.product_url || null;
+    const productHandle = data.product_handle || null;
     let transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 587,
@@ -231,6 +300,23 @@ async function action$6({ request }) {
         `
       });
     }
+    const emailStatus = ((_a2 = info == null ? void 0 : info.accepted) == null ? void 0 : _a2.length) > 0 ? "true" : "false";
+    try {
+      await insertFormSubmission({
+        form_type: "shipping_form",
+        email: data.email || null,
+        phone: data.phone || null,
+        company: data.company || null,
+        name: data.name || null,
+        product_url: productUrl,
+        product_handle: productHandle,
+        product_title: data.title || null,
+        email_status: emailStatus,
+        payload: data
+      });
+    } catch (dbErr) {
+      console.error("Failed to save shipping_form submission to Supabase:", dbErr);
+    }
     return json(
       { message: "Shipping info saved successfully" },
       {
@@ -278,11 +364,140 @@ const route3 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   action: action$6,
   loader: loader$b
 }, Symbol.toStringTag, { value: "Module" }));
+function getCreds() {
+  const SHOP = process.env.SHOPIFY_SHOP;
+  const CLIENT_ID = process.env.SHOPIFY_API_KEY || process.env.SHOPIFY_CLIENT_ID;
+  const CLIENT_SECRET = process.env.SHOPIFY_API_SECRET || process.env.SHOPIFY_CLIENT_SECRET;
+  const API_VERSION = process.env.SHOPIFY_API_VERSION || "2025-07";
+  if (!SHOP || !CLIENT_ID || !CLIENT_SECRET) {
+    throw new Error(
+      "Server missing SHOPIFY_SHOP / SHOPIFY_API_KEY / SHOPIFY_API_SECRET env vars"
+    );
+  }
+  return { SHOP, CLIENT_ID, CLIENT_SECRET, API_VERSION };
+}
+async function getAdminToken({ SHOP, CLIENT_ID, CLIENT_SECRET }) {
+  const tokenRes = await fetch(`https://${SHOP}/admin/oauth/access_token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      grant_type: "client_credentials"
+    })
+  });
+  const tokenJson = await tokenRes.json().catch(() => null);
+  const token = tokenJson == null ? void 0 : tokenJson.access_token;
+  if (!token) {
+    throw new Error(
+      `Failed to obtain Admin API access token: ${JSON.stringify(tokenJson)}`
+    );
+  }
+  return token;
+}
+async function adminGraphql({ SHOP, API_VERSION }, token, query, variables) {
+  const res = await fetch(
+    `https://${SHOP}/admin/api/${API_VERSION}/graphql.json`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": token
+      },
+      body: JSON.stringify({ query, variables })
+    }
+  );
+  return res.json();
+}
+async function uploadToShopifyFiles(file) {
+  var _a2, _b, _c, _d, _e, _f, _g, _h;
+  if (!file || typeof file.arrayBuffer !== "function") {
+    throw new Error("uploadToShopifyFiles: expected a File");
+  }
+  const creds = getCreds();
+  const token = await getAdminToken(creds);
+  const mimeType = /\.eps$/i.test(file.name || "") ? "application/postscript" : file.type || "application/octet-stream";
+  const stagedJson = await adminGraphql(
+    creds,
+    token,
+    `
+      mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
+        stagedUploadsCreate(input: $input) {
+          stagedTargets { url resourceUrl parameters { name value } }
+          userErrors { field message }
+        }
+      }
+    `,
+    {
+      input: [
+        { resource: "FILE", filename: file.name, mimeType, httpMethod: "POST" }
+      ]
+    }
+  );
+  const target = (_c = (_b = (_a2 = stagedJson == null ? void 0 : stagedJson.data) == null ? void 0 : _a2.stagedUploadsCreate) == null ? void 0 : _b.stagedTargets) == null ? void 0 : _c[0];
+  if (!target) {
+    throw new Error(`Failed staged target: ${JSON.stringify(stagedJson)}`);
+  }
+  const resourceUrl = target.resourceUrl;
+  const uploadForm = new FormData();
+  for (const param of target.parameters) {
+    uploadForm.append(param.name, param.value);
+  }
+  uploadForm.append("file", file);
+  const uploadRes = await fetch(target.url, { method: "POST", body: uploadForm });
+  if (!uploadRes.ok) {
+    throw new Error("Staged bucket upload failed");
+  }
+  const isImage = (file.type || "").startsWith("image/") && !/\.eps$/i.test(file.name || "");
+  const contentType = isImage ? "IMAGE" : "FILE";
+  const fileCreateJson = await adminGraphql(
+    creds,
+    token,
+    `
+      mutation fileCreate($files: [FileCreateInput!]!) {
+        fileCreate(files: $files) {
+          files {
+            id
+            ... on MediaImage { image { url } }
+            ... on GenericFile { url }
+          }
+          userErrors { field message }
+        }
+      }
+    `,
+    {
+      files: [{ contentType, originalSource: resourceUrl, alt: file.name }]
+    }
+  );
+  const createdFile = (_f = (_e = (_d = fileCreateJson == null ? void 0 : fileCreateJson.data) == null ? void 0 : _d.fileCreate) == null ? void 0 : _e.files) == null ? void 0 : _f[0];
+  if (!createdFile) {
+    throw new Error(`File not created: ${JSON.stringify(fileCreateJson)}`);
+  }
+  const fileId = createdFile.id;
+  await new Promise((r) => setTimeout(r, 2e3));
+  const queryData = await adminGraphql(
+    creds,
+    token,
+    `
+      query getFile($id: ID!) {
+        node(id: $id) {
+          ... on MediaImage { id image { url } }
+          ... on GenericFile { id url }
+        }
+      }
+    `,
+    { id: fileId }
+  );
+  const node = (_g = queryData == null ? void 0 : queryData.data) == null ? void 0 : _g.node;
+  const url = ((_h = node == null ? void 0 : node.image) == null ? void 0 : _h.url) || (node == null ? void 0 : node.url) || null;
+  return { url, fileId };
+}
 const NOTIFY_RECIPIENTS = [
   "sales@logomatcentral.com"
 ];
 const REPLY_TO = "sales@logomatcentral.com";
 const action$5 = async ({ request }) => {
+  var _a2;
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -308,14 +523,27 @@ const action$5 = async ({ request }) => {
   });
   const customerEmail = (data.email || "").trim();
   const hasCustomerEmail = customerEmail !== "";
+  const productUrl = data.product_url || null;
+  const productHandle = data.product_handle || null;
   const file = formData.get("attachment");
-  const attachments = file instanceof File && file.name ? [
+  const hasFile = file instanceof File && file.name;
+  const attachments = hasFile ? [
     {
       filename: file.name,
       content: Buffer.from(await file.arrayBuffer()),
       contentType: file.type
     }
   ] : [];
+  let mediaUrl = null;
+  let mediaName = hasFile ? file.name : null;
+  if (hasFile) {
+    try {
+      const uploaded = await uploadToShopifyFiles(file);
+      mediaUrl = uploaded.url;
+    } catch (uploadErr) {
+      console.error("Failed to upload attachment to Shopify Files:", uploadErr);
+    }
+  }
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
@@ -341,7 +569,7 @@ const action$5 = async ({ request }) => {
   if (data.variant_id) mydata += `<p>Size: ${data.variant_id}</p>`;
   if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
   try {
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       // from: '"Mat Order" <sales.logomat@gmail.com>',   // BACKUP
       from: '"Mat Order" <logomatcentral.sales@gmail.com>',
       // Reply goes to the customer who submitted the form (falls back to company inbox).
@@ -370,6 +598,25 @@ const action$5 = async ({ request }) => {
           </div>
         `
       });
+    }
+    const emailStatus = ((_a2 = info == null ? void 0 : info.accepted) == null ? void 0 : _a2.length) > 0 ? "true" : "false";
+    try {
+      await insertFormSubmission({
+        form_type: "request_quote",
+        email: data.email || null,
+        phone: data.phone || null,
+        company: data.company || null,
+        name: data.name || null,
+        product_url: productUrl,
+        product_handle: productHandle,
+        product_title: data.mat_type || null,
+        media_url: mediaUrl,
+        media_name: mediaName,
+        email_status: emailStatus,
+        payload: data
+      });
+    } catch (dbErr) {
+      console.error("Failed to save request_quote submission to Supabase:", dbErr);
     }
     return json(
       { message: "Shipping info saved successfully" },
@@ -1118,144 +1365,189 @@ const route13 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
 }, Symbol.toStringTag, { value: "Module" }));
 const loader$1 = async ({ request, params }) => {
   await authenticate.admin(request);
-  const id = params.id;
-  const shippingData = await prisma.shippingData.findUnique({
-    where: { id }
-  });
-  console.log("Shipping Data:", shippingData);
-  return json(shippingData);
+  const submission = await getFormSubmission(params.id);
+  return json({ submission });
 };
-function Index$1() {
-  const shippingData = useLoaderData();
+const FORM_META$1 = {
+  shipping_form: { label: "Shipping Info", tone: "info" },
+  request_quote: { label: "Quote Request", tone: "attention" }
+};
+const HIDDEN_PAYLOAD_KEYS = /* @__PURE__ */ new Set([
+  "product_url",
+  "product_handle",
+  "attachment"
+]);
+function humanize(key) {
+  return key.replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+function isImageUrl(url) {
+  return /\.(png|jpe?g|gif|webp|svg)(\?|$)/i.test(url || "");
+}
+function SubmissionDetail() {
+  const { submission } = useLoaderData();
+  if (!submission) {
+    return /* @__PURE__ */ jsx(Page, { backAction: { content: "Submissions", url: "/app" }, title: "Not found", children: /* @__PURE__ */ jsx(LegacyCard, { sectioned: true, children: /* @__PURE__ */ jsx(EmptyState, { heading: "Submission not found", image: "", children: /* @__PURE__ */ jsx("p", { children: "This submission may have been deleted." }) }) }) });
+  }
+  const meta = FORM_META$1[submission.form_type] || {
+    label: submission.form_type || "Unknown",
+    tone: "new"
+  };
+  const payload = submission.payload && typeof submission.payload === "object" ? submission.payload : {};
+  const payloadEntries = Object.entries(payload).filter(
+    ([key, value]) => !HIDDEN_PAYLOAD_KEYS.has(key) && value !== null && value !== void 0 && String(value).trim() !== ""
+  );
   return /* @__PURE__ */ jsx(
     Page,
     {
-      backAction: { content: "Products", url: "/app" },
-      title: shippingData.email,
-      titleMetadata: shippingData.emailStatus === "true" ? /* @__PURE__ */ jsx(Badge, { tone: "success", children: "Success" }) : /* @__PURE__ */ jsx(Badge, { tone: "critical", children: "Failed" }),
-      children: /* @__PURE__ */ jsx(LegacyCard, { title: "Shipping Data", sectioned: true, children: /* @__PURE__ */ jsxs(BlockStack, { gap: "500", children: [
-        /* @__PURE__ */ jsx(Divider, {}),
-        /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-          /* @__PURE__ */ jsx("strong", { children: "Company:" }),
-          " ",
-          shippingData.company
-        ] }),
-        /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-          /* @__PURE__ */ jsx("strong", { children: "Email:" }),
-          " ",
-          shippingData.email
-        ] }),
-        /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-          /* @__PURE__ */ jsx("strong", { children: "Phone:" }),
-          " ",
-          shippingData.phone
-        ] }),
-        /* @__PURE__ */ jsx(Divider, {}),
-        /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-          /* @__PURE__ */ jsx("strong", { children: "Street:" }),
-          " ",
-          shippingData.street
-        ] }),
-        /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-          /* @__PURE__ */ jsx("strong", { children: "Apt:" }),
-          " ",
-          shippingData.apt
-        ] }),
-        /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-          /* @__PURE__ */ jsx("strong", { children: "City:" }),
-          " ",
-          shippingData.city
-        ] }),
-        /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-          /* @__PURE__ */ jsx("strong", { children: "State:" }),
-          " ",
-          shippingData.state
-        ] }),
-        /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-          /* @__PURE__ */ jsx("strong", { children: "ZIP:" }),
-          " ",
-          shippingData.zip
-        ] }),
-        /* @__PURE__ */ jsx(Divider, {}),
-        /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-          /* @__PURE__ */ jsx("strong", { children: "Loading Dock:" }),
-          " ",
-          shippingData.loading_dock
-        ] }),
-        /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-          /* @__PURE__ */ jsx("strong", { children: "Liftgate:" }),
-          " ",
-          shippingData.liftgate
-        ] }),
-        /* @__PURE__ */ jsx(Divider, {}),
-        /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-          /* @__PURE__ */ jsx("strong", { children: "Cartons:" }),
-          " ",
-          shippingData.cartons
-        ] }),
-        /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-          /* @__PURE__ */ jsx("strong", { children: "Comments:" }),
-          " ",
-          shippingData.comments
-        ] }),
-        /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-          /* @__PURE__ */ jsx("strong", { children: "Variant ID:" }),
-          " ",
-          shippingData.variant_id
-        ] })
-      ] }) })
+      backAction: { content: "Submissions", url: "/app" },
+      title: submission.email || submission.company || "Submission",
+      titleMetadata: /* @__PURE__ */ jsxs(InlineStack, { gap: "200", children: [
+        /* @__PURE__ */ jsx(Badge, { tone: meta.tone, children: meta.label }),
+        submission.email_status === "true" ? /* @__PURE__ */ jsx(Badge, { tone: "success", children: "Sent" }) : /* @__PURE__ */ jsx(Badge, { tone: "critical", children: "Failed" })
+      ] }),
+      children: /* @__PURE__ */ jsxs(BlockStack, { gap: "400", children: [
+        /* @__PURE__ */ jsx(LegacyCard, { title: "Source", sectioned: true, children: /* @__PURE__ */ jsxs(BlockStack, { gap: "300", children: [
+          /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
+            /* @__PURE__ */ jsx("strong", { children: "Form:" }),
+            " ",
+            meta.label
+          ] }),
+          /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
+            /* @__PURE__ */ jsx("strong", { children: "Product:" }),
+            " ",
+            submission.product_url ? /* @__PURE__ */ jsx(Link$1, { url: submission.product_url, target: "_blank", children: submission.product_title || submission.product_handle || submission.product_url }) : submission.product_title || submission.product_handle || "N/A"
+          ] }),
+          submission.product_handle && /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
+            /* @__PURE__ */ jsx("strong", { children: "Handle:" }),
+            " ",
+            submission.product_handle
+          ] }),
+          /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
+            /* @__PURE__ */ jsx("strong", { children: "Submitted:" }),
+            " ",
+            submission.created_at ? new Date(submission.created_at).toLocaleString() : "—"
+          ] })
+        ] }) }),
+        submission.media_url && /* @__PURE__ */ jsx(LegacyCard, { title: "Attachment", sectioned: true, children: /* @__PURE__ */ jsxs(InlineStack, { gap: "300", blockAlign: "center", children: [
+          isImageUrl(submission.media_url) && /* @__PURE__ */ jsx(
+            Thumbnail,
+            {
+              source: submission.media_url,
+              alt: submission.media_name || "Attachment",
+              size: "large"
+            }
+          ),
+          /* @__PURE__ */ jsx(Link$1, { url: submission.media_url, target: "_blank", children: submission.media_name || "Download file" })
+        ] }) }),
+        /* @__PURE__ */ jsx(LegacyCard, { title: "Submitted details", sectioned: true, children: /* @__PURE__ */ jsxs(BlockStack, { gap: "300", children: [
+          /* @__PURE__ */ jsx(Divider, {}),
+          payloadEntries.length === 0 ? /* @__PURE__ */ jsx(Text, { variant: "bodySm", tone: "subdued", children: "No additional fields." }) : payloadEntries.map(([key, value]) => /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
+            /* @__PURE__ */ jsxs("strong", { children: [
+              humanize(key),
+              ":"
+            ] }),
+            " ",
+            String(value)
+          ] }, key))
+        ] }) })
+      ] })
     }
   );
 }
 const route14 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  default: Index$1,
+  default: SubmissionDetail,
   loader: loader$1
 }, Symbol.toStringTag, { value: "Module" }));
 const loader = async ({ request }) => {
   await authenticate.admin(request);
-  const shippingData = await prisma.shippingData.findMany();
-  if (!shippingData || shippingData.length === 0) {
-    throw new Response("No data found", { status: 404 });
+  try {
+    const submissions = await listFormSubmissions();
+    return json({ submissions, error: null });
+  } catch (err) {
+    console.error("Failed to load form submissions:", err);
+    return json({ submissions: [], error: err.message });
   }
-  return json(shippingData);
 };
+const FORM_META = {
+  shipping_form: { label: "Shipping Info", tone: "info" },
+  request_quote: { label: "Quote Request", tone: "attention" }
+};
+function formatDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  return isNaN(d) ? "—" : d.toLocaleString();
+}
 function Index() {
-  const shippingData = useLoaderData();
+  const { submissions, error } = useLoaderData();
   const navigate = useNavigate();
-  const rows = shippingData.map((item) => [
-    item.email || "N/A",
-    item.emailStatus === "true" ? /* @__PURE__ */ jsx(Badge, { tone: "success", children: "Success" }) : /* @__PURE__ */ jsx(Badge, { tone: "critical", children: "Failed" }),
-    item.phone || "N/A",
-    /* @__PURE__ */ jsx(Tooltip, { content: "View Shipping Data", children: /* @__PURE__ */ jsx(Button, { onClick: () => navigate(`/app/shipping-data/${item.id}`), icon: ViewIcon, accessibilityLabel: "Add theme" }) })
-  ]);
-  return /* @__PURE__ */ jsx(Page, { title: "Shipping Data", children: /* @__PURE__ */ jsx(LegacyCard, { children: /* @__PURE__ */ jsx(
-    DataTable,
-    {
-      columnContentTypes: [
-        "text",
-        "numeric",
-        "numeric",
-        "numeric",
-        "numeric"
-      ],
-      headings: [
-        "Email Address",
-        "Status",
-        "Phone Number",
-        "Actions"
-      ],
-      rows,
-      footerContent: `Showing ${rows.length} of ${rows.length} results`
-    }
-  ) }) });
+  const rows = submissions.map((item) => {
+    const meta = FORM_META[item.form_type] || {
+      label: item.form_type || "Unknown",
+      tone: "new"
+    };
+    return [
+      /* @__PURE__ */ jsx(Badge, { tone: meta.tone, children: meta.label }),
+      item.email || "N/A",
+      item.phone || "N/A",
+      item.product_url ? /* @__PURE__ */ jsx(Link$1, { url: item.product_url, target: "_blank", children: item.product_handle || item.product_title || "View product" }) : item.product_handle || item.product_title || "N/A",
+      item.media_url ? /* @__PURE__ */ jsx(Link$1, { url: item.media_url, target: "_blank", children: item.media_name || "View file" }) : "—",
+      item.email_status === "true" ? /* @__PURE__ */ jsx(Badge, { tone: "success", children: "Sent" }) : /* @__PURE__ */ jsx(Badge, { tone: "critical", children: "Failed" }),
+      formatDate(item.created_at),
+      /* @__PURE__ */ jsx(Tooltip, { content: "View submission", children: /* @__PURE__ */ jsx(
+        Button,
+        {
+          onClick: () => navigate(`/app/submissions/${item.id}`),
+          icon: ViewIcon,
+          accessibilityLabel: "View submission"
+        }
+      ) })
+    ];
+  });
+  return /* @__PURE__ */ jsxs(Page, { title: "Form Submissions", children: [
+    error && /* @__PURE__ */ jsx("div", { style: { marginBottom: "1rem" }, children: /* @__PURE__ */ jsx(Banner, { tone: "critical", title: "Could not load submissions", children: /* @__PURE__ */ jsx("p", { children: error }) }) }),
+    /* @__PURE__ */ jsx(LegacyCard, { children: submissions.length === 0 && !error ? /* @__PURE__ */ jsx(
+      EmptyState,
+      {
+        heading: "No form submissions yet",
+        image: "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png",
+        children: /* @__PURE__ */ jsx("p", { children: "Shipping Info and Quote Request submissions from the storefront will appear here." })
+      }
+    ) : /* @__PURE__ */ jsx(
+      DataTable,
+      {
+        columnContentTypes: [
+          "text",
+          "text",
+          "text",
+          "text",
+          "text",
+          "text",
+          "text",
+          "text"
+        ],
+        headings: [
+          "Form",
+          "Email",
+          "Phone",
+          "Product",
+          "Attachment",
+          "Status",
+          "Submitted",
+          "Actions"
+        ],
+        rows,
+        footerContent: `Showing ${rows.length} of ${rows.length} results`
+      }
+    ) })
+  ] });
 }
 const route15 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: Index,
   loader
 }, Symbol.toStringTag, { value: "Module" }));
-const serverManifest = { "entry": { "module": "/assets/entry.client-CCetTxSu.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/root-CIjoxbYf.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": [] }, "routes/webhooks.app.scopes_update": { "id": "routes/webhooks.app.scopes_update", "parentId": "root", "path": "webhooks/app/scopes_update", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.scopes_update-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/webhooks.app.uninstalled": { "id": "routes/webhooks.app.uninstalled", "parentId": "root", "path": "webhooks/app/uninstalled", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.uninstalled-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping-info": { "id": "routes/api.save-shipping-info", "parentId": "root", "path": "api/save-shipping-info", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-info-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping": { "id": "routes/api.save-shipping", "parentId": "root", "path": "api/save-shipping", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.register": { "id": "routes/api.eps.register", "parentId": "root", "path": "api/eps/register", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.register-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.staged": { "id": "routes/api.eps.staged", "parentId": "root", "path": "api/eps/staged", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.staged-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.upload": { "id": "routes/api.eps.upload", "parentId": "root", "path": "api/eps/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.upload": { "id": "routes/api.upload", "parentId": "root", "path": "api/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.login": { "id": "routes/auth.login", "parentId": "root", "path": "auth/login", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-BBBW7PgP.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/styles-CdTkGOEN.js", "/assets/Page-B89eIvAU.js", "/assets/context-B7xVpkok.js"], "css": [] }, "routes/emailsend": { "id": "routes/emailsend", "parentId": "root", "path": "emailsend", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/emailsend-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.$": { "id": "routes/auth.$", "parentId": "root", "path": "auth/*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/auth._-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/_index": { "id": "routes/_index", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-BJV-LXEe.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": ["/assets/route-Cnm7FvdT.css"] }, "routes/app": { "id": "routes/app", "parentId": "root", "path": "app", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": true, "module": "/assets/app-BkeIaF_f.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/styles-CdTkGOEN.js", "/assets/context-B7xVpkok.js"], "css": [] }, "routes/app.shipping-data.$id": { "id": "routes/app.shipping-data.$id", "parentId": "routes/app", "path": "shipping-data/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app.shipping-data._id-DTp0ZqJW.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/Page-B89eIvAU.js", "/assets/LegacyCard-CO48VClw.js", "/assets/context-B7xVpkok.js"], "css": [] }, "routes/app._index": { "id": "routes/app._index", "parentId": "routes/app", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app._index-BG5NWlvp.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/Page-B89eIvAU.js", "/assets/LegacyCard-CO48VClw.js", "/assets/context-B7xVpkok.js"], "css": [] } }, "url": "/assets/manifest-89b7add8.js", "version": "89b7add8" };
+const serverManifest = { "entry": { "module": "/assets/entry.client-CCetTxSu.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/root-CIjoxbYf.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": [] }, "routes/webhooks.app.scopes_update": { "id": "routes/webhooks.app.scopes_update", "parentId": "root", "path": "webhooks/app/scopes_update", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.scopes_update-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/webhooks.app.uninstalled": { "id": "routes/webhooks.app.uninstalled", "parentId": "root", "path": "webhooks/app/uninstalled", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.uninstalled-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping-info": { "id": "routes/api.save-shipping-info", "parentId": "root", "path": "api/save-shipping-info", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-info-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping": { "id": "routes/api.save-shipping", "parentId": "root", "path": "api/save-shipping", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.register": { "id": "routes/api.eps.register", "parentId": "root", "path": "api/eps/register", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.register-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.staged": { "id": "routes/api.eps.staged", "parentId": "root", "path": "api/eps/staged", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.staged-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.upload": { "id": "routes/api.eps.upload", "parentId": "root", "path": "api/eps/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.upload": { "id": "routes/api.upload", "parentId": "root", "path": "api/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.login": { "id": "routes/auth.login", "parentId": "root", "path": "auth/login", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-Bwy9g9h5.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/styles-3X1Sl-w8.js", "/assets/Page-BvWabV9L.js", "/assets/context-BNaXih0K.js"], "css": [] }, "routes/emailsend": { "id": "routes/emailsend", "parentId": "root", "path": "emailsend", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/emailsend-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.$": { "id": "routes/auth.$", "parentId": "root", "path": "auth/*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/auth._-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/_index": { "id": "routes/_index", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-BJV-LXEe.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": ["/assets/route-Cnm7FvdT.css"] }, "routes/app": { "id": "routes/app", "parentId": "root", "path": "app", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": true, "module": "/assets/app-daYT2rQu.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/styles-3X1Sl-w8.js", "/assets/context-BNaXih0K.js"], "css": [] }, "routes/app.submissions.$id": { "id": "routes/app.submissions.$id", "parentId": "routes/app", "path": "submissions/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app.submissions._id-ka9ID3Z3.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/Page-BvWabV9L.js", "/assets/Link-B9FjQ-4J.js", "/assets/context-BNaXih0K.js"], "css": [] }, "routes/app._index": { "id": "routes/app._index", "parentId": "routes/app", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app._index-rO_Mu1o7.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/Page-BvWabV9L.js", "/assets/Link-B9FjQ-4J.js", "/assets/context-BNaXih0K.js"], "css": [] } }, "url": "/assets/manifest-e9ce172d.js", "version": "e9ce172d" };
 const mode = "production";
 const assetsBuildDirectory = "build\\client";
 const basename = "/";
@@ -1376,10 +1668,10 @@ const routes = {
     caseSensitive: void 0,
     module: route13
   },
-  "routes/app.shipping-data.$id": {
-    id: "routes/app.shipping-data.$id",
+  "routes/app.submissions.$id": {
+    id: "routes/app.submissions.$id",
     parentId: "routes/app",
-    path: "shipping-data/:id",
+    path: "submissions/:id",
     index: void 0,
     caseSensitive: void 0,
     module: route14

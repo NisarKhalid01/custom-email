@@ -8,9 +8,17 @@ generator client {
 // Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
 // enough when changing adapters.
 // See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+//
+// The database is Supabase. Prisma is used ONLY as the session-storage client
+// (the `Session` model below). Schema/migrations are managed by Supabase — the
+// SQL lives in supabase/migrations/. Do NOT run `prisma migrate dev` against
+// this DB: it would try to drop `form_submissions` (owned by Supabase, not
+// modeled here). Runtime uses the pooled DATABASE_URL (pgbouncer); directUrl is
+// the direct connection for any Prisma introspection.
 datasource db {
   provider  = "postgresql"
-  url  	    = env("DATABASE_URL")
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Session {
@@ -30,21 +38,7 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
-model ShippingData {
-  id           String   @id @default(uuid())
-  company      String?
-  street       String?
-  apt          String?
-  city         String?
-  state        String?
-  zip          String?
-  loading_dock String?
-  liftgate     String?
-  lastName     String?
-  email        String?
-  phone        String?
-  cartons      String?
-  comments     String?
-  variant_id   String?
-  emailStatus  String?
-}
+
+// Storefront form submissions live in Supabase table `form_submissions` and are
+// accessed via app/lib/supabase.server.js (postgres.js), NOT Prisma. It is
+// deliberately not modeled here so Prisma never tries to manage it.

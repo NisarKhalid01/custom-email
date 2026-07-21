@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "7cc30be013440505257411c84bb6c92f"
-name = "Custom Email"
+name = "Logomat Custom Forms"
 handle = "custom-email-3"
 application_url = "https://custom-email-pearl.vercel.app"
 embedded = true
@@ -15,7 +15,11 @@ api_version = "2025-04"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products,read_files,write_files,read_content,write_content"
+# The app only ever touches Shopify Files (stagedUploadsCreate / fileCreate for
+# the logo-upload widget and the quote-form attachment). No product, content,
+# order or customer APIs are used, so those scopes were removed.
+# write_files implies read_files, but both are listed for clarity.
+scopes = "read_files,write_files"
 
 [auth]
 redirect_urls = [

@@ -1,5 +1,6 @@
 import { json } from '@remix-run/node';
 import nodemailer from 'nodemailer';
+import { insertFormSubmission } from '../lib/supabase.server';
 
 // Internal notification recipients. Add/remove emails here as needed.
 const NOTIFY_RECIPIENTS = [
@@ -26,6 +27,9 @@ export async function action({ request }) {
     // Customer email from the form (may be missing/blank).
     const customerEmail = (data.email || "").trim();
     const hasCustomerEmail = customerEmail !== "";
+    // Which product page the form was submitted from (added to the form JS).
+    const productUrl = data.product_url || null;
+    const productHandle = data.product_handle || null;
     let transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 587,
@@ -84,25 +88,26 @@ export async function action({ request }) {
         `,
       });
     }
-    // let emailStatus = info.accepted.length > 0 ? 'true' : 'false';
-    // await prisma.shippingData.create({
-    //   data: {
-    //     company: data.company,
-    //     street: data.street,
-    //     apt: data.apt,
-    //     city: data.city,
-    //     state: data.state,
-    //     zip: data.zip,
-    //     loading_dock: data.loading_dock,
-    //     liftgate: data.liftgate,
-    //     email: data.email,
-    //     phone: data.phone,
-    //     cartons: data.cartons,
-    //     comments: data.comments,
-    //     variant_id: data.variant_id,
-    //     emailStatus: emailStatus,
-    //   },
-    // });
+    const emailStatus = info?.accepted?.length > 0 ? "true" : "false";
+
+    // Persist to Supabase. Never let a DB hiccup fail the customer's submission
+    // (the emails already went out), so log and continue on error.
+    try {
+      await insertFormSubmission({
+        form_type: "shipping_form",
+        email: data.email || null,
+        phone: data.phone || null,
+        company: data.company || null,
+        name: data.name || null,
+        product_url: productUrl,
+        product_handle: productHandle,
+        product_title: data.title || null,
+        email_status: emailStatus,
+        payload: data,
+      });
+    } catch (dbErr) {
+      console.error("Failed to save shipping_form submission to Supabase:", dbErr);
+    }
 
     return json(
       { message: 'Shipping info saved successfully' },

@@ -1,5 +1,7 @@
 import { json } from "@remix-run/node";
 import nodemailer from "nodemailer";
+import { insertFormSubmission } from "../lib/supabase.server";
+import { uploadToShopifyFiles } from "../lib/shopify-files.server";
 
 // Internal notification recipients. Add/remove emails here as needed.
 const NOTIFY_RECIPIENTS = [
@@ -40,18 +42,34 @@ export const action = async ({ request }) => {
   // Customer email from the form (may be missing/blank).
   const customerEmail = (data.email || "").trim();
   const hasCustomerEmail = customerEmail !== "";
+  // Which product page the form was submitted from (added to the form markup).
+  const productUrl = data.product_url || null;
+  const productHandle = data.product_handle || null;
 
   const file = formData.get("attachment");
-  const attachments =
-    file instanceof File && file.name
-      ? [
-          {
-            filename: file.name,
-            content: Buffer.from(await file.arrayBuffer()),
-            contentType: file.type,
-          },
-        ]
-      : [];
+  const hasFile = file instanceof File && file.name;
+  const attachments = hasFile
+    ? [
+        {
+          filename: file.name,
+          content: Buffer.from(await file.arrayBuffer()),
+          contentType: file.type,
+        },
+      ]
+    : [];
+
+  // Store the attachment in Shopify Files so the admin can reference it later.
+  // Non-fatal: a failed upload must not block the email / submission.
+  let mediaUrl = null;
+  let mediaName = hasFile ? file.name : null;
+  if (hasFile) {
+    try {
+      const uploaded = await uploadToShopifyFiles(file);
+      mediaUrl = uploaded.url;
+    } catch (uploadErr) {
+      console.error("Failed to upload attachment to Shopify Files:", uploadErr);
+    }
+  }
 
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
@@ -81,14 +99,14 @@ if (data.background_color) mydata += `<p>Background Color: ${data.background_col
 if (data.variant_id) mydata += `<p>Size: ${data.variant_id}</p>`;
 if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
   try {
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       // from: '"Mat Order" <sales.logomat@gmail.com>',   // BACKUP
       from: '"Mat Order" <logomatcentral.sales@gmail.com>',
       // Reply goes to the customer who submitted the form (falls back to company inbox).
       replyTo: hasCustomerEmail ? customerEmail : REPLY_TO,
       to: NOTIFY_RECIPIENTS.join(", "),
       subject: "New Mat Order Submission",
-      html: mydata, 
+      html: mydata,
       attachments,
     });
     // Only send the customer confirmation when a valid email was provided.
@@ -111,6 +129,28 @@ if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
           </div>
         `,
       });
+    }
+
+    const emailStatus = info?.accepted?.length > 0 ? "true" : "false";
+
+    // Persist to Supabase. Non-fatal so a DB hiccup can't fail the submission.
+    try {
+      await insertFormSubmission({
+        form_type: "request_quote",
+        email: data.email || null,
+        phone: data.phone || null,
+        company: data.company || null,
+        name: data.name || null,
+        product_url: productUrl,
+        product_handle: productHandle,
+        product_title: data.mat_type || null,
+        media_url: mediaUrl,
+        media_name: mediaName,
+        email_status: emailStatus,
+        payload: data,
+      });
+    } catch (dbErr) {
+      console.error("Failed to save request_quote submission to Supabase:", dbErr);
     }
 
     return json(
