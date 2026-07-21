@@ -17,8 +17,9 @@ import React from "react";
 import { getFormSubmission } from "../lib/supabase.server";
 
 export const loader = async ({ request, params }) => {
-  await authenticate.admin(request);
-  const submission = await getFormSubmission(params.id);
+  const { session } = await authenticate.admin(request);
+  // Scoped to the authenticated store so one store can't open another's record.
+  const submission = await getFormSubmission(params.id, session.shop);
   return json({ submission });
 };
 

@@ -11,11 +11,11 @@ import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prism
 import { PrismaClient } from "@prisma/client";
 import nodemailer from "nodemailer";
 import postgres from "postgres";
-import { useState } from "react";
-import { AppProvider, Page, Card, FormLayout, Text, TextField, Button, LegacyCard, EmptyState, BlockStack, Link as Link$1, InlineStack, Thumbnail, Divider, Badge, Tooltip, Banner, DataTable } from "@shopify/polaris";
+import { useState, useMemo } from "react";
+import { AppProvider, Page, Card, FormLayout, Text, TextField, Button, LegacyCard, EmptyState, BlockStack, Link as Link$1, InlineStack, Thumbnail, Divider, Badge, IndexTable, Tooltip, Banner, Box, Icon, Select } from "@shopify/polaris";
 import { AppProvider as AppProvider$1 } from "@shopify/shopify-app-remix/react";
 import { NavMenu } from "@shopify/app-bridge-react";
-import { ViewIcon } from "@shopify/polaris-icons";
+import { ViewIcon, SearchIcon } from "@shopify/polaris-icons";
 if (process.env.NODE_ENV !== "production") {
   if (!global.prismaGlobal) {
     global.prismaGlobal = new PrismaClient();
@@ -164,6 +164,7 @@ function getSql() {
 }
 const COLUMNS = [
   "form_type",
+  "shop",
   "email",
   "phone",
   "company",
@@ -190,18 +191,21 @@ async function insertFormSubmission(row) {
   `;
   return inserted;
 }
-async function listFormSubmissions() {
+async function listFormSubmissions(shop) {
+  if (!shop) return [];
   const sql = getSql();
   return sql`
     select * from ${sql(FORM_SUBMISSIONS_TABLE)}
+    where shop = ${shop}
     order by created_at desc
   `;
 }
-async function getFormSubmission(id) {
+async function getFormSubmission(id, shop) {
+  if (!shop) return null;
   const sql = getSql();
   const [row] = await sql`
     select * from ${sql(FORM_SUBMISSIONS_TABLE)}
-    where id = ${id}
+    where id = ${id} and shop = ${shop}
     limit 1
   `;
   return row ?? null;
@@ -226,6 +230,7 @@ async function action$6({ request }) {
     const data = await request.json();
     const customerEmail = (data.email || "").trim();
     const hasCustomerEmail = customerEmail !== "";
+    const shop = data.shop || process.env.SHOPIFY_SHOP || null;
     const productUrl = data.product_url || null;
     const productHandle = data.product_handle || null;
     let transporter = nodemailer.createTransport({
@@ -289,6 +294,7 @@ async function action$6({ request }) {
     try {
       await insertFormSubmission({
         form_type: "shipping_form",
+        shop,
         email: data.email || null,
         phone: data.phone || null,
         company: data.company || null,
@@ -508,6 +514,7 @@ const action$5 = async ({ request }) => {
   });
   const customerEmail = (data.email || "").trim();
   const hasCustomerEmail = customerEmail !== "";
+  const shop = data.shop || process.env.SHOPIFY_SHOP || null;
   const productUrl = data.product_url || null;
   const productHandle = data.product_handle || null;
   const file = formData.get("attachment");
@@ -588,6 +595,7 @@ const action$5 = async ({ request }) => {
     try {
       await insertFormSubmission({
         form_type: "request_quote",
+        shop,
         email: data.email || null,
         phone: data.phone || null,
         company: data.company || null,
@@ -1349,8 +1357,8 @@ const route13 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   loader: loader$2
 }, Symbol.toStringTag, { value: "Module" }));
 const loader$1 = async ({ request, params }) => {
-  await authenticate.admin(request);
-  const submission = await getFormSubmission(params.id);
+  const { session } = await authenticate.admin(request);
+  const submission = await getFormSubmission(params.id, session.shop);
   return json({ submission });
 };
 const FORM_META$1 = {
@@ -1445,9 +1453,9 @@ const route14 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   loader: loader$1
 }, Symbol.toStringTag, { value: "Module" }));
 const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
   try {
-    const submissions = await listFormSubmissions();
+    const submissions = await listFormSubmissions(session.shop);
     return json({ submissions, error: null });
   } catch (err) {
     console.error("Failed to load form submissions:", err);
@@ -1458,6 +1466,11 @@ const FORM_META = {
   shipping_form: { label: "Shipping Info", tone: "info" },
   request_quote: { label: "Quote Request", tone: "attention" }
 };
+const FORM_OPTIONS = [
+  { label: "All forms", value: "all" },
+  { label: "Shipping Info", value: "shipping_form" },
+  { label: "Quote Request", value: "request_quote" }
+];
 function formatDate(value) {
   if (!value) return "—";
   const d = new Date(value);
@@ -1466,65 +1479,106 @@ function formatDate(value) {
 function Index() {
   const { submissions, error } = useLoaderData();
   const navigate = useNavigate();
-  const rows = submissions.map((item) => {
+  const [search, setSearch] = useState("");
+  const [formType, setFormType] = useState("all");
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return submissions.filter((s) => {
+      const matchesForm = formType === "all" || s.form_type === formType;
+      if (!matchesForm) return false;
+      if (!q) return true;
+      return [
+        s.email,
+        s.phone,
+        s.company,
+        s.name,
+        s.product_handle,
+        s.product_title
+      ].filter(Boolean).some((v) => String(v).toLowerCase().includes(q));
+    });
+  }, [submissions, search, formType]);
+  const rowMarkup = filtered.map((item, index2) => {
     const meta = FORM_META[item.form_type] || {
       label: item.form_type || "Unknown",
       tone: "new"
     };
-    return [
-      /* @__PURE__ */ jsx(Badge, { tone: meta.tone, children: meta.label }),
-      item.email || "N/A",
-      item.phone || "N/A",
-      item.product_url ? /* @__PURE__ */ jsx(Link$1, { url: item.product_url, target: "_blank", children: item.product_handle || item.product_title || "View product" }) : item.product_handle || item.product_title || "N/A",
-      item.media_url ? /* @__PURE__ */ jsx(Link$1, { url: item.media_url, target: "_blank", children: item.media_name || "View file" }) : "—",
-      item.email_status === "true" ? /* @__PURE__ */ jsx(Badge, { tone: "success", children: "Sent" }) : /* @__PURE__ */ jsx(Badge, { tone: "critical", children: "Failed" }),
-      formatDate(item.created_at),
-      /* @__PURE__ */ jsx(Tooltip, { content: "View submission", children: /* @__PURE__ */ jsx(
+    return /* @__PURE__ */ jsxs(IndexTable.Row, { id: String(item.id), position: index2, children: [
+      /* @__PURE__ */ jsx(IndexTable.Cell, { children: /* @__PURE__ */ jsx(Badge, { tone: meta.tone, children: meta.label }) }),
+      /* @__PURE__ */ jsx(IndexTable.Cell, { children: /* @__PURE__ */ jsx(Text, { variant: "bodyMd", fontWeight: "semibold", as: "span", children: item.email || "N/A" }) }),
+      /* @__PURE__ */ jsx(IndexTable.Cell, { children: item.phone || "N/A" }),
+      /* @__PURE__ */ jsx(IndexTable.Cell, { children: item.product_url ? /* @__PURE__ */ jsx(Link$1, { url: item.product_url, target: "_blank", children: item.product_handle || item.product_title || "View product" }) : item.product_handle || item.product_title || "N/A" }),
+      /* @__PURE__ */ jsx(IndexTable.Cell, { children: item.media_url ? /* @__PURE__ */ jsx(Link$1, { url: item.media_url, target: "_blank", children: item.media_name || "View file" }) : "—" }),
+      /* @__PURE__ */ jsx(IndexTable.Cell, { children: item.email_status === "true" ? /* @__PURE__ */ jsx(Badge, { tone: "success", children: "Sent" }) : /* @__PURE__ */ jsx(Badge, { tone: "critical", children: "Failed" }) }),
+      /* @__PURE__ */ jsx(IndexTable.Cell, { children: formatDate(item.created_at) }),
+      /* @__PURE__ */ jsx(IndexTable.Cell, { children: /* @__PURE__ */ jsx(Tooltip, { content: "View submission", children: /* @__PURE__ */ jsx(
         Button,
         {
           onClick: () => navigate(`/app/submissions/${item.id}`),
           icon: ViewIcon,
-          accessibilityLabel: "View submission"
+          accessibilityLabel: "View submission",
+          variant: "tertiary"
         }
-      ) })
-    ];
+      ) }) })
+    ] }, item.id);
   });
+  const emptyStateMarkup = submissions.length === 0 ? /* @__PURE__ */ jsx(
+    EmptyState,
+    {
+      heading: "No form submissions yet",
+      image: "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png",
+      children: /* @__PURE__ */ jsx("p", { children: "Shipping Info and Quote Request submissions from the storefront will appear here." })
+    }
+  ) : /* @__PURE__ */ jsx(EmptyState, { heading: "No matching submissions", image: "", children: /* @__PURE__ */ jsx("p", { children: "Try a different search term or form filter." }) });
   return /* @__PURE__ */ jsxs(Page, { title: "Form Submissions", fullWidth: true, children: [
     error && /* @__PURE__ */ jsx("div", { style: { marginBottom: "1rem" }, children: /* @__PURE__ */ jsx(Banner, { tone: "critical", title: "Could not load submissions", children: /* @__PURE__ */ jsx("p", { children: error }) }) }),
-    /* @__PURE__ */ jsx(LegacyCard, { children: submissions.length === 0 && !error ? /* @__PURE__ */ jsx(
-      EmptyState,
-      {
-        heading: "No form submissions yet",
-        image: "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png",
-        children: /* @__PURE__ */ jsx("p", { children: "Shipping Info and Quote Request submissions from the storefront will appear here." })
-      }
-    ) : /* @__PURE__ */ jsx(
-      DataTable,
-      {
-        columnContentTypes: [
-          "text",
-          "text",
-          "text",
-          "text",
-          "text",
-          "text",
-          "text",
-          "text"
-        ],
-        headings: [
-          "Form",
-          "Email",
-          "Phone",
-          "Product",
-          "Attachment",
-          "Status",
-          "Submitted",
-          "Actions"
-        ],
-        rows,
-        footerContent: `Showing ${rows.length} of ${rows.length} results`
-      }
-    ) })
+    /* @__PURE__ */ jsxs(Card, { padding: "0", children: [
+      /* @__PURE__ */ jsx(Box, { padding: "300", children: /* @__PURE__ */ jsxs(InlineStack, { gap: "200", blockAlign: "center", wrap: false, children: [
+        /* @__PURE__ */ jsx("div", { style: { flexGrow: 1 }, children: /* @__PURE__ */ jsx(
+          TextField,
+          {
+            label: "Search submissions",
+            labelHidden: true,
+            value: search,
+            onChange: setSearch,
+            autoComplete: "off",
+            placeholder: "Search by email, phone, product or company",
+            prefix: /* @__PURE__ */ jsx(Icon, { source: SearchIcon }),
+            clearButton: true,
+            onClearButtonClick: () => setSearch("")
+          }
+        ) }),
+        /* @__PURE__ */ jsx(Box, { minWidth: "180px", children: /* @__PURE__ */ jsx(
+          Select,
+          {
+            label: "Form",
+            labelHidden: true,
+            options: FORM_OPTIONS,
+            value: formType,
+            onChange: setFormType
+          }
+        ) })
+      ] }) }),
+      /* @__PURE__ */ jsx(
+        IndexTable,
+        {
+          resourceName: { singular: "submission", plural: "submissions" },
+          itemCount: filtered.length,
+          selectable: false,
+          emptyState: emptyStateMarkup,
+          headings: [
+            { title: "Form" },
+            { title: "Email" },
+            { title: "Phone" },
+            { title: "Product" },
+            { title: "Attachment" },
+            { title: "Status" },
+            { title: "Submitted" },
+            { title: "Actions" }
+          ],
+          children: rowMarkup
+        }
+      )
+    ] })
   ] });
 }
 const route15 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
@@ -1532,7 +1586,7 @@ const route15 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   default: Index,
   loader
 }, Symbol.toStringTag, { value: "Module" }));
-const serverManifest = { "entry": { "module": "/assets/entry.client-CCetTxSu.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/root-Di7UKnUh.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": [] }, "routes/webhooks.app.scopes_update": { "id": "routes/webhooks.app.scopes_update", "parentId": "root", "path": "webhooks/app/scopes_update", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.scopes_update-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/webhooks.app.uninstalled": { "id": "routes/webhooks.app.uninstalled", "parentId": "root", "path": "webhooks/app/uninstalled", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.uninstalled-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping-info": { "id": "routes/api.save-shipping-info", "parentId": "root", "path": "api/save-shipping-info", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-info-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping": { "id": "routes/api.save-shipping", "parentId": "root", "path": "api/save-shipping", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.register": { "id": "routes/api.eps.register", "parentId": "root", "path": "api/eps/register", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.register-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.staged": { "id": "routes/api.eps.staged", "parentId": "root", "path": "api/eps/staged", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.staged-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.upload": { "id": "routes/api.eps.upload", "parentId": "root", "path": "api/eps/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.upload": { "id": "routes/api.upload", "parentId": "root", "path": "api/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.login": { "id": "routes/auth.login", "parentId": "root", "path": "auth/login", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-Bwy9g9h5.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/styles-3X1Sl-w8.js", "/assets/Page-BvWabV9L.js", "/assets/context-BNaXih0K.js"], "css": [] }, "routes/emailsend": { "id": "routes/emailsend", "parentId": "root", "path": "emailsend", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/emailsend-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.$": { "id": "routes/auth.$", "parentId": "root", "path": "auth/*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/auth._-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/_index": { "id": "routes/_index", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-BJV-LXEe.js", "imports": ["/assets/components-Df0w2LiA.js"], "css": ["/assets/route-Cnm7FvdT.css"] }, "routes/app": { "id": "routes/app", "parentId": "root", "path": "app", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": true, "module": "/assets/app-daYT2rQu.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/styles-3X1Sl-w8.js", "/assets/context-BNaXih0K.js"], "css": [] }, "routes/app.submissions.$id": { "id": "routes/app.submissions.$id", "parentId": "routes/app", "path": "submissions/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app.submissions._id-ka9ID3Z3.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/Page-BvWabV9L.js", "/assets/Link-B9FjQ-4J.js", "/assets/context-BNaXih0K.js"], "css": [] }, "routes/app._index": { "id": "routes/app._index", "parentId": "routes/app", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app._index-v9KyaHR7.js", "imports": ["/assets/components-Df0w2LiA.js", "/assets/Page-BvWabV9L.js", "/assets/Link-B9FjQ-4J.js", "/assets/context-BNaXih0K.js"], "css": [] } }, "url": "/assets/manifest-ee08651c.js", "version": "ee08651c" };
+const serverManifest = { "entry": { "module": "/assets/entry.client-CFG-gx23.js", "imports": ["/assets/components-DyDreDpw.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/root-CC45B95g.js", "imports": ["/assets/components-DyDreDpw.js"], "css": [] }, "routes/webhooks.app.scopes_update": { "id": "routes/webhooks.app.scopes_update", "parentId": "root", "path": "webhooks/app/scopes_update", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.scopes_update-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/webhooks.app.uninstalled": { "id": "routes/webhooks.app.uninstalled", "parentId": "root", "path": "webhooks/app/uninstalled", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.uninstalled-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping-info": { "id": "routes/api.save-shipping-info", "parentId": "root", "path": "api/save-shipping-info", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-info-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping": { "id": "routes/api.save-shipping", "parentId": "root", "path": "api/save-shipping", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.register": { "id": "routes/api.eps.register", "parentId": "root", "path": "api/eps/register", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.register-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.staged": { "id": "routes/api.eps.staged", "parentId": "root", "path": "api/eps/staged", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.staged-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.upload": { "id": "routes/api.eps.upload", "parentId": "root", "path": "api/eps/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.upload": { "id": "routes/api.upload", "parentId": "root", "path": "api/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.login": { "id": "routes/auth.login", "parentId": "root", "path": "auth/login", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-CAUzTyrc.js", "imports": ["/assets/components-DyDreDpw.js", "/assets/styles-CCRJ7xyD.js", "/assets/Page-CEvgStWR.js", "/assets/Card-wAR-COiK.js", "/assets/context-wbC-90Ou.js"], "css": [] }, "routes/emailsend": { "id": "routes/emailsend", "parentId": "root", "path": "emailsend", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/emailsend-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.$": { "id": "routes/auth.$", "parentId": "root", "path": "auth/*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/auth._-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/_index": { "id": "routes/_index", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-CggXE7ld.js", "imports": ["/assets/components-DyDreDpw.js"], "css": ["/assets/route-Cnm7FvdT.css"] }, "routes/app": { "id": "routes/app", "parentId": "root", "path": "app", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": true, "module": "/assets/app-BHwM5Nk4.js", "imports": ["/assets/components-DyDreDpw.js", "/assets/styles-CCRJ7xyD.js", "/assets/context-wbC-90Ou.js"], "css": [] }, "routes/app.submissions.$id": { "id": "routes/app.submissions.$id", "parentId": "routes/app", "path": "submissions/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app.submissions._id-B37wPC3H.js", "imports": ["/assets/components-DyDreDpw.js", "/assets/Page-CEvgStWR.js", "/assets/Link-DNBL_PJa.js", "/assets/context-wbC-90Ou.js"], "css": [] }, "routes/app._index": { "id": "routes/app._index", "parentId": "routes/app", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app._index-BGGjbV26.js", "imports": ["/assets/components-DyDreDpw.js", "/assets/context-wbC-90Ou.js", "/assets/Page-CEvgStWR.js", "/assets/Link-DNBL_PJa.js", "/assets/Card-wAR-COiK.js"], "css": [] } }, "url": "/assets/manifest-280ce002.js", "version": "280ce002" };
 const mode = "production";
 const assetsBuildDirectory = "build\\client";
 const basename = "/";

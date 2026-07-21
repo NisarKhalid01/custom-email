@@ -15,6 +15,10 @@ create table if not exists public.form_submissions (
   id             uuid primary key default gen_random_uuid(),
   form_type      text not null check (form_type in ('shipping_form', 'request_quote')),
 
+  -- Which store this submission belongs to (permanent .myshopify.com domain).
+  -- Matches the embedded admin's session.shop, so listings scope per store.
+  shop           text,
+
   -- Listing columns
   email          text,
   phone          text,
@@ -38,6 +42,7 @@ create table if not exists public.form_submissions (
 
 create index if not exists form_submissions_form_type_idx  on public.form_submissions (form_type);
 create index if not exists form_submissions_created_at_idx  on public.form_submissions (created_at desc);
+create index if not exists form_submissions_shop_idx        on public.form_submissions (shop);
 
 -- The app connects with the service_role key (server-side only), which bypasses
 -- RLS. Enable RLS with no public policies so that the anon/public key cannot

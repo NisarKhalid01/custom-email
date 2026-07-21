@@ -42,6 +42,7 @@ export function getSql() {
 // the `payload` jsonb blob.
 const COLUMNS = [
   "form_type",
+  "shop",
   "email",
   "phone",
   "company",
@@ -74,21 +75,30 @@ export async function insertFormSubmission(row) {
   return inserted;
 }
 
-/** List all submissions, newest first. */
-export async function listFormSubmissions() {
+/**
+ * List a store's submissions, newest first. Always scoped to a shop so one
+ * store's admin never sees another store's data.
+ */
+export async function listFormSubmissions(shop) {
+  if (!shop) return [];
   const sql = getSql();
   return sql`
     select * from ${sql(FORM_SUBMISSIONS_TABLE)}
+    where shop = ${shop}
     order by created_at desc
   `;
 }
 
-/** Fetch a single submission by id (or null). */
-export async function getFormSubmission(id) {
+/**
+ * Fetch a single submission by id, scoped to the shop (so a store can't open
+ * another store's submission by guessing an id). Returns null if not found.
+ */
+export async function getFormSubmission(id, shop) {
+  if (!shop) return null;
   const sql = getSql();
   const [row] = await sql`
     select * from ${sql(FORM_SUBMISSIONS_TABLE)}
-    where id = ${id}
+    where id = ${id} and shop = ${shop}
     limit 1
   `;
   return row ?? null;

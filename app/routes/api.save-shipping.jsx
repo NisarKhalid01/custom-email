@@ -42,7 +42,8 @@ export const action = async ({ request }) => {
   // Customer email from the form (may be missing/blank).
   const customerEmail = (data.email || "").trim();
   const hasCustomerEmail = customerEmail !== "";
-  // Which product page the form was submitted from (added to the form markup).
+  // Which store + product page the form was submitted from (added to the form markup).
+  const shop = data.shop || process.env.SHOPIFY_SHOP || null;
   const productUrl = data.product_url || null;
   const productHandle = data.product_handle || null;
 
@@ -137,6 +138,7 @@ if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
     try {
       await insertFormSubmission({
         form_type: "request_quote",
+        shop,
         email: data.email || null,
         phone: data.phone || null,
         company: data.company || null,
