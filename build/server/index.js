@@ -260,6 +260,10 @@ async function action$6({ request }) {
       <p>Cartons: ${data.cartons}</p>
       <p>Comments: ${data.comments}</p>
       <p>Size: ${data.variant_id}</p>
+      <p>Thickness: ${data.thickness || ""}</p>
+      <p>Product URL: ${data.product_url || ""}</p>
+      <p>Product Handle: ${data.product_handle || ""}</p>
+      <p>Store: ${data.shop || ""}</p>
     `;
     let info = await transporter.sendMail({
       // from: '"Shipping Info" <sales.logomat@gmail.com>',   // BACKUP
@@ -560,6 +564,13 @@ const action$5 = async ({ request }) => {
   if (data.background_color) mydata += `<p>Background Color: ${data.background_color}</p>`;
   if (data.variant_id) mydata += `<p>Size: ${data.variant_id}</p>`;
   if (data.logo_edging) mydata += `<p>Logo Edging: ${data.logo_edging}</p>`;
+  if (data.address) mydata += `<p>Address: ${data.address}</p>`;
+  if (data.address2) mydata += `<p>Address 2: ${data.address2}</p>`;
+  if (data.zip) mydata += `<p>ZIP: ${data.zip}</p>`;
+  if (data.comments) mydata += `<p>Comments: ${data.comments}</p>`;
+  if (data.product_url) mydata += `<p>Product URL: ${data.product_url}</p>`;
+  if (data.product_handle) mydata += `<p>Product Handle: ${data.product_handle}</p>`;
+  if (data.shop) mydata += `<p>Store: ${data.shop}</p>`;
   try {
     const info = await transporter.sendMail({
       // from: '"Mat Order" <sales.logomat@gmail.com>',   // BACKUP

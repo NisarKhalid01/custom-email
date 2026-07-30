@@ -58,6 +58,10 @@ export async function action({ request }) {
       <p>Cartons: ${data.cartons}</p>
       <p>Comments: ${data.comments}</p>
       <p>Size: ${data.variant_id}</p>
+      <p>Thickness: ${data.thickness || ''}</p>
+      <p>Product URL: ${data.product_url || ''}</p>
+      <p>Product Handle: ${data.product_handle || ''}</p>
+      <p>Store: ${data.shop || ''}</p>
     `;
     let info = await transporter.sendMail({
       // from: '"Shipping Info" <sales.logomat@gmail.com>',   // BACKUP
