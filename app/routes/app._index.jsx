@@ -1,6 +1,6 @@
 import { authenticate } from "../shopify.server";
 import { json } from "@remix-run/node";
-import { useLoaderData, useNavigate } from "@remix-run/react";
+import { useLoaderData, useNavigate, useNavigation } from "@remix-run/react";
 import {
   Page,
   Card,
@@ -56,6 +56,13 @@ function formatDate(value) {
 export default function Index() {
   const { submissions, error } = useLoaderData();
   const navigate = useNavigate();
+  const navigation = useNavigation();
+  // Which submission's detail page is currently loading (to spin its View button).
+  const pendingId =
+    navigation.state !== "idle" &&
+    navigation.location?.pathname?.startsWith("/app/submissions/")
+      ? navigation.location.pathname.split("/").pop()
+      : null;
 
   const [search, setSearch] = useState("");
   const [formType, setFormType] = useState("all");
@@ -163,6 +170,7 @@ export default function Index() {
               icon={ViewIcon}
               accessibilityLabel="View submission"
               variant="tertiary"
+              loading={pendingId === String(item.id)}
             />
           </Tooltip>
         </IndexTable.Cell>

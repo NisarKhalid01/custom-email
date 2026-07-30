@@ -3,6 +3,7 @@ import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import {
   Page,
+  Box,
   LegacyCard,
   BlockStack,
   InlineStack,
@@ -93,6 +94,7 @@ export default function SubmissionDetail() {
         </InlineStack>
       }
     >
+      <Box paddingBlockEnd="800">
       <BlockStack gap="400">
         <LegacyCard title="Source" sectioned>
           <BlockStack gap="300">
@@ -159,6 +161,7 @@ export default function SubmissionDetail() {
           </BlockStack>
         </LegacyCard>
       </BlockStack>
+      </Box>
     </Page>
   );
 }
