@@ -132,6 +132,10 @@ export default function SubmissionDetail() {
       }
     >
       <Box paddingBlockEnd="800">
+      {/* BlockStack already spaces the cards; remove Polaris's extra
+          LegacyCard-to-LegacyCard margin so the gap isn't doubled. */}
+      <style>{`.lmc-submission-cards .Polaris-LegacyCard + .Polaris-LegacyCard { margin-top: 0; }`}</style>
+      <div className="lmc-submission-cards">
       <BlockStack gap="400">
         <LegacyCard title="Source" sectioned>
           <InlineStack gap="400" blockAlign="center" wrap={false}>
@@ -219,6 +223,7 @@ export default function SubmissionDetail() {
           </BlockStack>
         </LegacyCard>
       </BlockStack>
+      </div>
       </Box>
     </Page>
   );

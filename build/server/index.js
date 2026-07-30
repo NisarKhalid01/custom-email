@@ -1434,68 +1434,71 @@ function SubmissionDetail() {
         /* @__PURE__ */ jsx(Badge, { tone: meta.tone, children: meta.label }),
         submission.email_status === "true" ? /* @__PURE__ */ jsx(Badge, { tone: "success", children: "Sent" }) : /* @__PURE__ */ jsx(Badge, { tone: "critical", children: "Failed" })
       ] }),
-      children: /* @__PURE__ */ jsx(Box, { paddingBlockEnd: "800", children: /* @__PURE__ */ jsxs(BlockStack, { gap: "400", children: [
-        /* @__PURE__ */ jsx(LegacyCard, { title: "Source", sectioned: true, children: /* @__PURE__ */ jsxs(InlineStack, { gap: "400", blockAlign: "center", wrap: false, children: [
-          productImage ? /* @__PURE__ */ jsx(
-            "img",
-            {
-              src: productImage,
-              alt: submission.product_title || "Product",
-              width: 84,
-              height: 84,
-              style: {
+      children: /* @__PURE__ */ jsxs(Box, { paddingBlockEnd: "800", children: [
+        /* @__PURE__ */ jsx("style", { children: `.lmc-submission-cards .Polaris-LegacyCard + .Polaris-LegacyCard { margin-top: 0; }` }),
+        /* @__PURE__ */ jsx("div", { className: "lmc-submission-cards", children: /* @__PURE__ */ jsxs(BlockStack, { gap: "400", children: [
+          /* @__PURE__ */ jsx(LegacyCard, { title: "Source", sectioned: true, children: /* @__PURE__ */ jsxs(InlineStack, { gap: "400", blockAlign: "center", wrap: false, children: [
+            productImage ? /* @__PURE__ */ jsx(
+              "img",
+              {
+                src: productImage,
+                alt: submission.product_title || "Product",
                 width: 84,
                 height: 84,
-                objectFit: "cover",
-                borderRadius: 10,
-                border: "1px solid var(--p-color-border, #e1e3e5)",
-                flexShrink: 0
+                style: {
+                  width: 84,
+                  height: 84,
+                  objectFit: "cover",
+                  borderRadius: 10,
+                  border: "1px solid var(--p-color-border, #e1e3e5)",
+                  flexShrink: 0
+                }
               }
-            }
-          ) : /* @__PURE__ */ jsx(
-            Thumbnail,
-            {
-              source: "",
-              alt: submission.product_title || "Product",
-              size: "large"
-            }
-          ),
-          /* @__PURE__ */ jsxs(BlockStack, { gap: "100", children: [
-            /* @__PURE__ */ jsx(Text, { variant: "headingMd", as: "h3", children: submission.product_title || submission.product_handle || "N/A" }),
-            (submission.product_url || adminProductUrl) && /* @__PURE__ */ jsxs(InlineStack, { gap: "400", children: [
-              submission.product_url && /* @__PURE__ */ jsx(Link$1, { url: submission.product_url, target: "_blank", children: "View on Frontend" }),
-              adminProductUrl && /* @__PURE__ */ jsx(Link$1, { url: adminProductUrl, target: "_blank", children: "View in Admin" })
-            ] }),
-            /* @__PURE__ */ jsxs(Text, { variant: "bodySm", tone: "subdued", children: [
-              "Submitted",
-              " ",
-              submission.created_at ? new Date(submission.created_at).toLocaleString() : "—"
+            ) : /* @__PURE__ */ jsx(
+              Thumbnail,
+              {
+                source: "",
+                alt: submission.product_title || "Product",
+                size: "large"
+              }
+            ),
+            /* @__PURE__ */ jsxs(BlockStack, { gap: "100", children: [
+              /* @__PURE__ */ jsx(Text, { variant: "headingMd", as: "h3", children: submission.product_title || submission.product_handle || "N/A" }),
+              (submission.product_url || adminProductUrl) && /* @__PURE__ */ jsxs(InlineStack, { gap: "400", children: [
+                submission.product_url && /* @__PURE__ */ jsx(Link$1, { url: submission.product_url, target: "_blank", children: "View on Frontend" }),
+                adminProductUrl && /* @__PURE__ */ jsx(Link$1, { url: adminProductUrl, target: "_blank", children: "View in Admin" })
+              ] }),
+              /* @__PURE__ */ jsxs(Text, { variant: "bodySm", tone: "subdued", children: [
+                "Submitted",
+                " ",
+                submission.created_at ? new Date(submission.created_at).toLocaleString() : "—"
+              ] })
             ] })
-          ] })
-        ] }) }),
-        submission.media_url && /* @__PURE__ */ jsx(LegacyCard, { title: "Attachment", sectioned: true, children: /* @__PURE__ */ jsxs(InlineStack, { gap: "300", blockAlign: "center", children: [
-          isImageUrl(submission.media_url) && /* @__PURE__ */ jsx(
-            Thumbnail,
-            {
-              source: submission.media_url,
-              alt: submission.media_name || "Attachment",
-              size: "large"
-            }
-          ),
-          /* @__PURE__ */ jsx(Link$1, { url: submission.media_url, target: "_blank", children: submission.media_name || "Download file" })
-        ] }) }),
-        /* @__PURE__ */ jsx(LegacyCard, { title: "Submitted details", sectioned: true, children: /* @__PURE__ */ jsxs(BlockStack, { gap: "300", children: [
-          /* @__PURE__ */ jsx(Divider, {}),
-          payloadEntries.length === 0 ? /* @__PURE__ */ jsx(Text, { variant: "bodySm", tone: "subdued", children: "No additional fields." }) : payloadEntries.map(([key, value]) => /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
-            /* @__PURE__ */ jsxs("strong", { children: [
-              humanize(key),
-              ":"
-            ] }),
-            " ",
-            String(value)
-          ] }, key))
+          ] }) }),
+          submission.media_url && /* @__PURE__ */ jsx(LegacyCard, { title: "Attachment", sectioned: true, children: /* @__PURE__ */ jsxs(InlineStack, { gap: "300", blockAlign: "center", children: [
+            isImageUrl(submission.media_url) && /* @__PURE__ */ jsx(
+              Thumbnail,
+              {
+                source: submission.media_url,
+                alt: submission.media_name || "Attachment",
+                size: "large"
+              }
+            ),
+            /* @__PURE__ */ jsx(Link$1, { url: submission.media_url, target: "_blank", children: submission.media_name || "Download file" })
+          ] }) }),
+          /* @__PURE__ */ jsx(LegacyCard, { title: "Submitted details", sectioned: true, children: /* @__PURE__ */ jsxs(BlockStack, { gap: "300", children: [
+            /* @__PURE__ */ jsx(Divider, {}),
+            payloadEntries.length === 0 ? /* @__PURE__ */ jsx(Text, { variant: "bodySm", tone: "subdued", children: "No additional fields." }) : payloadEntries.map(([key, value]) => /* @__PURE__ */ jsxs(Text, { variant: "bodySm", children: [
+              /* @__PURE__ */ jsxs("strong", { children: [
+                humanize(key),
+                ":"
+              ] }),
+              " ",
+              String(value)
+            ] }, key))
+          ] }) })
         ] }) })
-      ] }) })
+      ] })
     }
   );
 }
@@ -1678,7 +1681,7 @@ const route15 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   default: Index,
   loader
 }, Symbol.toStringTag, { value: "Module" }));
-const serverManifest = { "entry": { "module": "/assets/entry.client-Cxry_8MS.js", "imports": ["/assets/components-CRxAEdNh.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/root-CLT5jnUg.js", "imports": ["/assets/components-CRxAEdNh.js"], "css": [] }, "routes/webhooks.app.scopes_update": { "id": "routes/webhooks.app.scopes_update", "parentId": "root", "path": "webhooks/app/scopes_update", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.scopes_update-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/webhooks.app.uninstalled": { "id": "routes/webhooks.app.uninstalled", "parentId": "root", "path": "webhooks/app/uninstalled", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.uninstalled-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping-info": { "id": "routes/api.save-shipping-info", "parentId": "root", "path": "api/save-shipping-info", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-info-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping": { "id": "routes/api.save-shipping", "parentId": "root", "path": "api/save-shipping", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.register": { "id": "routes/api.eps.register", "parentId": "root", "path": "api/eps/register", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.register-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.staged": { "id": "routes/api.eps.staged", "parentId": "root", "path": "api/eps/staged", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.staged-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.upload": { "id": "routes/api.eps.upload", "parentId": "root", "path": "api/eps/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.upload": { "id": "routes/api.upload", "parentId": "root", "path": "api/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.login": { "id": "routes/auth.login", "parentId": "root", "path": "auth/login", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-hs5HURg6.js", "imports": ["/assets/components-CRxAEdNh.js", "/assets/styles-VP1Q-VAF.js", "/assets/Page-CpQUpyhd.js", "/assets/Card-BI_Hrb2k.js", "/assets/context-Di9Lpz35.js"], "css": [] }, "routes/emailsend": { "id": "routes/emailsend", "parentId": "root", "path": "emailsend", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/emailsend-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.$": { "id": "routes/auth.$", "parentId": "root", "path": "auth/*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/auth._-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/_index": { "id": "routes/_index", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-CDZntbRB.js", "imports": ["/assets/components-CRxAEdNh.js"], "css": ["/assets/route-Cnm7FvdT.css"] }, "routes/app": { "id": "routes/app", "parentId": "root", "path": "app", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": true, "module": "/assets/app-BEmZ7jYo.js", "imports": ["/assets/components-CRxAEdNh.js", "/assets/styles-VP1Q-VAF.js", "/assets/context-Di9Lpz35.js"], "css": [] }, "routes/app.submissions.$id": { "id": "routes/app.submissions.$id", "parentId": "routes/app", "path": "submissions/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app.submissions._id-vFSUhFS5.js", "imports": ["/assets/components-CRxAEdNh.js", "/assets/Page-CpQUpyhd.js", "/assets/Link-DfWny1vC.js", "/assets/context-Di9Lpz35.js"], "css": [] }, "routes/app._index": { "id": "routes/app._index", "parentId": "routes/app", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app._index-DZKaHSM6.js", "imports": ["/assets/components-CRxAEdNh.js", "/assets/context-Di9Lpz35.js", "/assets/Page-CpQUpyhd.js", "/assets/Link-DfWny1vC.js", "/assets/Card-BI_Hrb2k.js"], "css": [] } }, "url": "/assets/manifest-d123057b.js", "version": "d123057b" };
+const serverManifest = { "entry": { "module": "/assets/entry.client-Cxry_8MS.js", "imports": ["/assets/components-CRxAEdNh.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/root-CLT5jnUg.js", "imports": ["/assets/components-CRxAEdNh.js"], "css": [] }, "routes/webhooks.app.scopes_update": { "id": "routes/webhooks.app.scopes_update", "parentId": "root", "path": "webhooks/app/scopes_update", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.scopes_update-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/webhooks.app.uninstalled": { "id": "routes/webhooks.app.uninstalled", "parentId": "root", "path": "webhooks/app/uninstalled", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/webhooks.app.uninstalled-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping-info": { "id": "routes/api.save-shipping-info", "parentId": "root", "path": "api/save-shipping-info", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-info-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.save-shipping": { "id": "routes/api.save-shipping", "parentId": "root", "path": "api/save-shipping", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.save-shipping-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.register": { "id": "routes/api.eps.register", "parentId": "root", "path": "api/eps/register", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.register-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.staged": { "id": "routes/api.eps.staged", "parentId": "root", "path": "api/eps/staged", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.staged-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.eps.upload": { "id": "routes/api.eps.upload", "parentId": "root", "path": "api/eps/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.eps.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/api.upload": { "id": "routes/api.upload", "parentId": "root", "path": "api/upload", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/api.upload-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.login": { "id": "routes/auth.login", "parentId": "root", "path": "auth/login", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-hs5HURg6.js", "imports": ["/assets/components-CRxAEdNh.js", "/assets/styles-VP1Q-VAF.js", "/assets/Page-CpQUpyhd.js", "/assets/Card-BI_Hrb2k.js", "/assets/context-Di9Lpz35.js"], "css": [] }, "routes/emailsend": { "id": "routes/emailsend", "parentId": "root", "path": "emailsend", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/emailsend-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/auth.$": { "id": "routes/auth.$", "parentId": "root", "path": "auth/*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/auth._-l0sNRNKZ.js", "imports": [], "css": [] }, "routes/_index": { "id": "routes/_index", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/route-CDZntbRB.js", "imports": ["/assets/components-CRxAEdNh.js"], "css": ["/assets/route-Cnm7FvdT.css"] }, "routes/app": { "id": "routes/app", "parentId": "root", "path": "app", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": true, "module": "/assets/app-BEmZ7jYo.js", "imports": ["/assets/components-CRxAEdNh.js", "/assets/styles-VP1Q-VAF.js", "/assets/context-Di9Lpz35.js"], "css": [] }, "routes/app.submissions.$id": { "id": "routes/app.submissions.$id", "parentId": "routes/app", "path": "submissions/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app.submissions._id-DKlsnNMH.js", "imports": ["/assets/components-CRxAEdNh.js", "/assets/Page-CpQUpyhd.js", "/assets/Link-DfWny1vC.js", "/assets/context-Di9Lpz35.js"], "css": [] }, "routes/app._index": { "id": "routes/app._index", "parentId": "routes/app", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasErrorBoundary": false, "module": "/assets/app._index-DZKaHSM6.js", "imports": ["/assets/components-CRxAEdNh.js", "/assets/context-Di9Lpz35.js", "/assets/Page-CpQUpyhd.js", "/assets/Link-DfWny1vC.js", "/assets/Card-BI_Hrb2k.js"], "css": [] } }, "url": "/assets/manifest-51d74c11.js", "version": "51d74c11" };
 const mode = "production";
 const assetsBuildDirectory = "build\\client";
 const basename = "/";
