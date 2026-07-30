@@ -19,7 +19,7 @@ import {
   Banner,
 } from "@shopify/polaris";
 import { SearchIcon, ViewIcon } from "@shopify/polaris-icons";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { listFormSubmissions } from "../lib/supabase.server";
 
 export const loader = async ({ request }) => {
@@ -79,11 +79,29 @@ export default function Index() {
     });
   }, [submissions, search, formType]);
 
-  const rowMarkup = filtered.map((item, index) => {
+  // Client-side pagination — activates once there are more than PAGE_SIZE rows.
+  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(1);
+  // Reset to the first page whenever the search/filter changes the result set.
+  useEffect(() => {
+    setPage(1);
+  }, [search, formType]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const paged = filtered.slice(start, start + PAGE_SIZE);
+
+  const rowMarkup = paged.map((item, index) => {
     const meta = FORM_META[item.form_type] || {
       label: item.form_type || "Unknown",
       tone: "new",
     };
+    // Attachment file name (fall back to the last URL segment if not stored).
+    const fileName =
+      item.media_name ||
+      (item.media_url
+        ? decodeURIComponent(item.media_url.split("/").pop().split("?")[0])
+        : null);
     return (
       <IndexTable.Row id={String(item.id)} key={item.id} position={index}>
         <IndexTable.Cell>
@@ -107,7 +125,19 @@ export default function Index() {
         <IndexTable.Cell>
           {item.media_url ? (
             <Link url={item.media_url} target="_blank">
-              {item.media_name || "View file"}
+              <span
+                title={fileName}
+                style={{
+                  display: "inline-block",
+                  maxWidth: 160,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  verticalAlign: "middle",
+                }}
+              >
+                {fileName}
+              </span>
             </Link>
           ) : (
             "—"
@@ -161,6 +191,7 @@ export default function Index() {
           </Banner>
         </div>
       )}
+      <Box paddingBlockEnd="800">
       <Card padding="0">
         <Box padding="300">
           <InlineStack gap="200" blockAlign="center" wrap={false}>
@@ -203,10 +234,25 @@ export default function Index() {
             { title: "Submitted" },
             { title: "Actions" },
           ]}
+          pagination={
+            filtered.length > PAGE_SIZE
+              ? {
+                  hasNext: currentPage < totalPages,
+                  hasPrevious: currentPage > 1,
+                  onNext: () => setPage((p) => Math.min(p + 1, totalPages)),
+                  onPrevious: () => setPage((p) => Math.max(p - 1, 1)),
+                  label: `${start + 1}–${Math.min(
+                    start + PAGE_SIZE,
+                    filtered.length,
+                  )} of ${filtered.length}`,
+                }
+              : undefined
+          }
         >
           {rowMarkup}
         </IndexTable>
       </Card>
+      </Box>
     </Page>
   );
 }
