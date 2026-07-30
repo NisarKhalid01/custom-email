@@ -21,7 +21,9 @@ export const loader = async ({ request, params }) => {
   const { session } = await authenticate.admin(request);
   // Scoped to the authenticated store so one store can't open another's record.
   const submission = await getFormSubmission(params.id, session.shop);
-  return json({ submission });
+  // Store handle for building admin deep-links (logo-mat-central.myshopify.com -> logo-mat-central).
+  const storeHandle = (session.shop || "").replace(/\.myshopify\.com$/, "");
+  return json({ submission, storeHandle });
 };
 
 const FORM_META = {
@@ -49,7 +51,7 @@ function isImageUrl(url) {
 }
 
 export default function SubmissionDetail() {
-  const { submission } = useLoaderData();
+  const { submission, storeHandle } = useLoaderData();
 
   if (!submission) {
     return (
@@ -67,6 +69,13 @@ export default function SubmissionDetail() {
     label: submission.form_type || "Unknown",
     tone: "new",
   };
+  // Deep-link the handle to the admin product list filtered by that handle.
+  const adminProductUrl =
+    submission.product_handle && storeHandle
+      ? `https://admin.shopify.com/store/${storeHandle}/products?query=${encodeURIComponent(
+          "handle:" + submission.product_handle,
+        )}`
+      : null;
   const payload =
     submission.payload && typeof submission.payload === "object"
       ? submission.payload
@@ -115,7 +124,14 @@ export default function SubmissionDetail() {
             </Text>
             {submission.product_handle && (
               <Text variant="bodySm">
-                <strong>Handle:</strong> {submission.product_handle}
+                <strong>Handle:</strong>{" "}
+                {adminProductUrl ? (
+                  <Link url={adminProductUrl} target="_blank">
+                    {submission.product_handle}
+                  </Link>
+                ) : (
+                  submission.product_handle
+                )}
               </Text>
             )}
             <Text variant="bodySm">
