@@ -135,11 +135,6 @@ export default function SubmissionDetail() {
                 )}
               </InlineStack>
             )}
-            {submission.product_handle && (
-              <Text variant="bodySm">
-                <strong>Handle:</strong> {submission.product_handle}
-              </Text>
-            )}
             <Text variant="bodySm">
               <strong>Submitted:</strong>{" "}
               {submission.created_at
