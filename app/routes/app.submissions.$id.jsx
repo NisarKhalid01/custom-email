@@ -23,7 +23,28 @@ export const loader = async ({ request, params }) => {
   const submission = await getFormSubmission(params.id, session.shop);
   // Store handle for building admin deep-links (logo-mat-central.myshopify.com -> logo-mat-central).
   const storeHandle = (session.shop || "").replace(/\.myshopify\.com$/, "");
-  return json({ submission, storeHandle });
+
+  // Product image from the PUBLIC storefront product JSON (no scope needed).
+  // Non-fatal: just show no image if it can't be fetched.
+  let productImage = null;
+  if (submission?.product_url) {
+    try {
+      const res = await fetch(submission.product_url + ".json", {
+        headers: { "User-Agent": "Mozilla/5.0" },
+      });
+      if (res.ok) {
+        const j = await res.json();
+        const src = j?.product?.image?.src || j?.product?.images?.[0]?.src || null;
+        productImage = src
+          ? `${src}${src.includes("?") ? "&" : "?"}width=200`
+          : null;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return json({ submission, storeHandle, productImage });
 };
 
 const FORM_META = {
@@ -51,7 +72,7 @@ function isImageUrl(url) {
 }
 
 export default function SubmissionDetail() {
-  const { submission, storeHandle } = useLoaderData();
+  const { submission, storeHandle, productImage } = useLoaderData();
 
   if (!submission) {
     return (
@@ -113,35 +134,56 @@ export default function SubmissionDetail() {
       <Box paddingBlockEnd="800">
       <BlockStack gap="400">
         <LegacyCard title="Source" sectioned>
-          <BlockStack gap="300">
-            <Text variant="bodySm">
-              <strong>Form:</strong> {meta.label}
-            </Text>
-            <Text variant="bodySm">
-              <strong>Product:</strong>{" "}
-              {submission.product_title || submission.product_handle || "N/A"}
-            </Text>
-            {(submission.product_url || adminProductUrl) && (
-              <InlineStack gap="400">
-                {submission.product_url && (
-                  <Link url={submission.product_url} target="_blank">
-                    View on Frontend
-                  </Link>
-                )}
-                {adminProductUrl && (
-                  <Link url={adminProductUrl} target="_blank">
-                    View in Admin
-                  </Link>
-                )}
-              </InlineStack>
+          <InlineStack gap="400" blockAlign="center" wrap={false}>
+            {productImage ? (
+              <img
+                src={productImage}
+                alt={submission.product_title || "Product"}
+                width={84}
+                height={84}
+                style={{
+                  width: 84,
+                  height: 84,
+                  objectFit: "cover",
+                  borderRadius: 10,
+                  border: "1px solid var(--p-color-border, #e1e3e5)",
+                  flexShrink: 0,
+                }}
+              />
+            ) : (
+              <Thumbnail
+                source=""
+                alt={submission.product_title || "Product"}
+                size="large"
+              />
             )}
-            <Text variant="bodySm">
-              <strong>Submitted:</strong>{" "}
-              {submission.created_at
-                ? new Date(submission.created_at).toLocaleString()
-                : "—"}
-            </Text>
-          </BlockStack>
+            <BlockStack gap="100">
+              <Badge tone={meta.tone}>{meta.label}</Badge>
+              <Text variant="headingMd" as="h3">
+                {submission.product_title || submission.product_handle || "N/A"}
+              </Text>
+              {(submission.product_url || adminProductUrl) && (
+                <InlineStack gap="400">
+                  {submission.product_url && (
+                    <Link url={submission.product_url} target="_blank">
+                      View on Frontend
+                    </Link>
+                  )}
+                  {adminProductUrl && (
+                    <Link url={adminProductUrl} target="_blank">
+                      View in Admin
+                    </Link>
+                  )}
+                </InlineStack>
+              )}
+              <Text variant="bodySm" tone="subdued">
+                Submitted{" "}
+                {submission.created_at
+                  ? new Date(submission.created_at).toLocaleString()
+                  : "—"}
+              </Text>
+            </BlockStack>
+          </InlineStack>
         </LegacyCard>
 
         {submission.media_url && (
