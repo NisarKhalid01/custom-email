@@ -46,6 +46,7 @@ export const action = async ({ request }) => {
   const shop = data.shop || process.env.SHOPIFY_SHOP || null;
   const productUrl = data.product_url || null;
   const productHandle = data.product_handle || null;
+  const productId = data.product_id || null;
 
   const file = formData.get("attachment");
   const hasFile = file instanceof File && file.name;
@@ -152,6 +153,7 @@ if (data.shop) mydata += `<p>Store: ${data.shop}</p>`;
         name: data.name || null,
         product_url: productUrl,
         product_handle: productHandle,
+        product_id: productId,
         product_title: data.mat_type || null,
         media_url: mediaUrl,
         media_name: mediaName,

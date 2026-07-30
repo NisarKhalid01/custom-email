@@ -69,13 +69,20 @@ export default function SubmissionDetail() {
     label: submission.form_type || "Unknown",
     tone: "new",
   };
-  // Deep-link the handle to the admin product list filtered by that handle.
-  const adminProductUrl =
-    submission.product_handle && storeHandle
-      ? `https://admin.shopify.com/store/${storeHandle}/products?query=${encodeURIComponent(
-          "handle:" + submission.product_handle,
-        )}`
-      : null;
+  // Prefer a DIRECT link to the product's admin page (needs the product id);
+  // otherwise fall back to an admin product search filtered by handle.
+  const adminBase = storeHandle
+    ? `https://admin.shopify.com/store/${storeHandle}`
+    : null;
+  const adminProductUrl = !adminBase
+    ? null
+    : submission.product_id
+      ? `${adminBase}/products/${submission.product_id}`
+      : submission.product_handle
+        ? `${adminBase}/products?query=${encodeURIComponent(
+            "handle:" + submission.product_handle,
+          )}`
+        : null;
   const payload =
     submission.payload && typeof submission.payload === "object"
       ? submission.payload
@@ -112,26 +119,25 @@ export default function SubmissionDetail() {
             </Text>
             <Text variant="bodySm">
               <strong>Product:</strong>{" "}
-              {submission.product_url ? (
-                <Link url={submission.product_url} target="_blank">
-                  {submission.product_title ||
-                    submission.product_handle ||
-                    submission.product_url}
-                </Link>
-              ) : (
-                submission.product_title || submission.product_handle || "N/A"
-              )}
+              {submission.product_title || submission.product_handle || "N/A"}
             </Text>
+            {(submission.product_url || adminProductUrl) && (
+              <InlineStack gap="400">
+                {submission.product_url && (
+                  <Link url={submission.product_url} target="_blank">
+                    View on Frontend
+                  </Link>
+                )}
+                {adminProductUrl && (
+                  <Link url={adminProductUrl} target="_blank">
+                    View in Admin
+                  </Link>
+                )}
+              </InlineStack>
+            )}
             {submission.product_handle && (
               <Text variant="bodySm">
-                <strong>Handle:</strong>{" "}
-                {adminProductUrl ? (
-                  <Link url={adminProductUrl} target="_blank">
-                    {submission.product_handle}
-                  </Link>
-                ) : (
-                  submission.product_handle
-                )}
+                <strong>Handle:</strong> {submission.product_handle}
               </Text>
             )}
             <Text variant="bodySm">
