@@ -158,7 +158,6 @@ export default function SubmissionDetail() {
               />
             )}
             <BlockStack gap="100">
-              <Badge tone={meta.tone}>{meta.label}</Badge>
               <Text variant="headingMd" as="h3">
                 {submission.product_title || submission.product_handle || "N/A"}
               </Text>
