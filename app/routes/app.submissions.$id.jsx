@@ -69,13 +69,20 @@ export default function SubmissionDetail() {
     label: submission.form_type || "Unknown",
     tone: "new",
   };
-  // Deep-link the handle to the admin product list filtered by that handle.
-  const adminProductUrl =
-    submission.product_handle && storeHandle
-      ? `https://admin.shopify.com/store/${storeHandle}/products?query=${encodeURIComponent(
-          "handle:" + submission.product_handle,
-        )}`
-      : null;
+  // Prefer a DIRECT link to the product's admin page (needs the product id);
+  // otherwise fall back to an admin product search filtered by handle.
+  const adminBase = storeHandle
+    ? `https://admin.shopify.com/store/${storeHandle}`
+    : null;
+  const adminProductUrl = !adminBase
+    ? null
+    : submission.product_id
+      ? `${adminBase}/products/${submission.product_id}`
+      : submission.product_handle
+        ? `${adminBase}/products?query=${encodeURIComponent(
+            "handle:" + submission.product_handle,
+          )}`
+        : null;
   const payload =
     submission.payload && typeof submission.payload === "object"
       ? submission.payload

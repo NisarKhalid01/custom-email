@@ -31,6 +31,7 @@ export async function action({ request }) {
     const shop = data.shop || process.env.SHOPIFY_SHOP || null;
     const productUrl = data.product_url || null;
     const productHandle = data.product_handle || null;
+    const productId = data.product_id || null;
     let transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 587,
@@ -107,6 +108,7 @@ export async function action({ request }) {
         name: data.name || null,
         product_url: productUrl,
         product_handle: productHandle,
+        product_id: productId,
         product_title: data.title || null,
         email_status: emailStatus,
         payload: data,

@@ -50,6 +50,7 @@ const COLUMNS = [
   "product_url",
   "product_handle",
   "product_title",
+  "product_id",
   "media_url",
   "media_name",
   "email_status",
