@@ -105,6 +105,11 @@ export default function Index() {
     return (
       <IndexTable.Row id={String(item.id)} key={item.id} position={index}>
         <IndexTable.Cell>
+          <Text variant="bodyMd" as="span" tone="subdued">
+            {start + index + 1}
+          </Text>
+        </IndexTable.Cell>
+        <IndexTable.Cell>
           <Badge tone={meta.tone}>{meta.label}</Badge>
         </IndexTable.Cell>
         <IndexTable.Cell>
@@ -225,6 +230,7 @@ export default function Index() {
           selectable={false}
           emptyState={emptyStateMarkup}
           headings={[
+            { title: "#" },
             { title: "Form" },
             { title: "Email" },
             { title: "Phone" },
