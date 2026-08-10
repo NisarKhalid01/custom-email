@@ -22,6 +22,8 @@ export default function App() {
         <Link to="/app" rel="home">
           Home
         </Link>
+        <Link to="/app/logo-upload/uploads">Logo uploads</Link>
+        <Link to="/app/logo-upload/settings">Upload settings</Link>
       </NavMenu>
       <Outlet />
     </AppProvider>
