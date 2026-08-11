@@ -3,14 +3,12 @@ import { Form } from "@remix-run/react";
 import {
   Card,
   BlockStack,
-  InlineGrid,
   Checkbox,
   TextField,
   Select,
   Button,
   Banner,
   Text,
-  Divider,
   Box,
 } from "@shopify/polaris";
 import { SETTINGS_SPEC, COPY_SPEC, FAIL_MODES } from "../config/defaults.js";
@@ -28,36 +26,24 @@ import { SETTINGS_SPEC, COPY_SPEC, FAIL_MODES } from "../config/defaults.js";
  * from "field omitted" and would silently fail to turn a feature OFF.
  */
 
-const NUMBER_FIELDS = [
-  "verification_validity_days",
-  "code_expiry_minutes",
-  "verification_token_minutes",
-  "max_code_attempts",
-  "rate_limit_email_per_15min",
-  "rate_limit_ip_per_hour",
-];
-
+/* Only the login modal's wording is editable. The five `verify_*` strings and
+   the six verification tuning numbers still exist in config/defaults.js — they
+   are simply not surfaced while F2 is declined. */
+/* `login_create_account` is intentionally absent. This store uses Shopify's new
+   customer accounts, where login and registration are the same hosted URL, so
+   the modal renders ONE button. Showing an editable label for a button that is
+   never rendered would just be a field with no visible effect. */
 const LOGIN_COPY = [
   "login_heading",
   "login_body",
   "login_sign_in",
-  "login_create_account",
   "login_close",
-];
-
-const VERIFY_COPY = [
-  "verify_heading",
-  "verify_body",
-  "verify_send",
-  "verify_confirm",
-  "verify_resend",
 ];
 
 export default function SettingsForm({
   settings,
   secretConfigured,
   degraded,
-  verificationAvailable,
   saving,
   saved,
   saveError,
@@ -134,31 +120,19 @@ export default function SettingsForm({
               onChange={set("require_login")}
             />
 
-            <input
-              type="hidden"
-              name="require_email_verification"
-              value={String(values.require_email_verification)}
-            />
-            <Checkbox
-              label={spec("require_email_verification").label}
-              helpText={
-                verificationAvailable
-                  ? spec("require_email_verification").help
-                  : "Not available yet — the verification endpoints have not been built. Turning this on would reject every upload, because shoppers would have no way to receive a code."
-              }
-              checked={values.require_email_verification}
-              onChange={set("require_email_verification")}
-              disabled={!verificationAvailable}
-            />
+            {/* Email verification (F2) was DECLINED on 2026-08-11: this store
+                uses Shopify's new customer accounts, which already sign shoppers
+                in with an emailed one-time code. A second code would verify an
+                address Shopify verified seconds earlier.
 
-            {!verificationAvailable && (
-              <Banner tone="info">
-                Email verification is on hold pending confirmation of whether the
-                store uses <b>classic</b> or <b>new</b> customer accounts. With
-                new customer accounts, Shopify already signs shoppers in with an
-                emailed code, which would make this largely redundant.
-              </Banner>
-            )}
+                The setting still exists in config/defaults.js and is still
+                enforced by the upload route, so it can be revived without
+                rework — but it is deliberately NOT shown here. Offering a
+                control whose endpoints do not exist would be a trap: switching
+                it on rejects every upload. The action strips the field
+                server-side too, so a crafted POST cannot enable it either.
+
+                See docs/logo-upload/TASKS.md, the F2 decision block. */}
           </BlockStack>
         </Card>
 
@@ -215,53 +189,13 @@ export default function SettingsForm({
           </BlockStack>
         </Card>
 
-        {/* ------------------------------------------- verification tuning */}
-        <Card>
-          <BlockStack gap="400">
-            <BlockStack gap="100">
-              <Text as="h2" variant="headingMd">
-                Email verification settings
-              </Text>
-              <Text as="p" tone="subdued">
-                These take effect once email verification is available. Saving
-                them now is harmless.
-              </Text>
-            </BlockStack>
+        {/* The "Email verification settings" card (6 numeric fields + 5 copy
+            strings) lived here. Removed with the F2 decline — 11 controls for a
+            feature that will not ship was the largest block on the page.
 
-            <InlineGrid columns={{ xs: 1, md: 2 }} gap="400">
-              {NUMBER_FIELDS.map((key) => (
-                <TextField
-                  key={key}
-                  name={key}
-                  type="number"
-                  label={spec(key).label}
-                  helpText={spec(key).help || undefined}
-                  min={spec(key).min}
-                  max={spec(key).max}
-                  value={String(values[key] ?? "")}
-                  onChange={set(key)}
-                  autoComplete="off"
-                />
-              ))}
-            </InlineGrid>
-
-            <Divider />
-
-            {VERIFY_COPY.map((key) => (
-              <TextField
-                key={key}
-                name={`copy.${key}`}
-                label={humanise(key)}
-                value={values.copy[key] ?? ""}
-                onChange={setCopy(key)}
-                maxLength={COPY_SPEC[key].max}
-                showCharacterCount
-                multiline={COPY_SPEC[key].max > 200 ? 3 : undefined}
-                autoComplete="off"
-              />
-            ))}
-          </BlockStack>
-        </Card>
+            The values themselves are untouched in config/defaults.js and in the
+            database; nothing was migrated or deleted. Reviving F2 means
+            restoring this card, not re-deriving the settings. */}
 
         <Box paddingBlockEnd="400">
           <Button submit variant="primary" loading={saving} disabled={degraded}>

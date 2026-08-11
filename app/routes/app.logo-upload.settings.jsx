@@ -16,20 +16,27 @@ import SettingsForm from "../features/logo-upload/ui/SettingsForm.jsx";
  * `app/features/logo-upload/`.
  *
  * ---------------------------------------------------------------------------
- * EMAIL VERIFICATION IS SHOWN BUT DISABLED
+ * EMAIL VERIFICATION (F2) IS DECLINED — AND HIDDEN
  * ---------------------------------------------------------------------------
- * The F2 endpoints (verify-request / verify-confirm) are held pending Q1, so a
- * shopper currently has no way to *receive* a code. If a merchant switched
- * `require_email_verification` on today, `/api/logo-upload/upload` would
- * correctly return 403 for every upload and there would be no route out of it.
+ * Decided 2026-08-11: this store uses Shopify's NEW customer accounts, which
+ * already sign shoppers in with an emailed one-time code. A second code from us
+ * would verify an address Shopify verified seconds earlier.
  *
- * The toggle is therefore disabled in the UI with an explanation, rather than
- * hidden (hiding it would make the roadmap invisible) or left enabled (which
- * would be a live footgun). The server still enforces the setting if it is set
- * directly in the database — the UI is a guard rail, not the rule.
+ * The controls were removed from the form entirely. An earlier version showed
+ * them disabled-with-an-explanation, but advertising a feature that will not
+ * ship is just clutter — and a control that rejects every upload if switched on
+ * is a trap worth removing rather than labelling.
+ *
+ * NOTHING WAS DELETED BELOW THE UI. The setting still exists in
+ * config/defaults.js, the enforcement still exists in the upload route, and the
+ * tables still exist (empty). Reviving F2 means building A8/A9/A11/A12 and
+ * restoring the form fields — no migration, no rework.
+ *
+ * The guard below stays REGARDLESS of the UI: a crafted POST straight to this
+ * action must not be able to enable a feature whose endpoints do not exist.
  */
 
-/** Flip to true when A9/A11/A12 ship. */
+/** Flip to true only when A8/A9/A11/A12 actually ship. */
 const VERIFICATION_AVAILABLE = false;
 
 export const loader = async ({ request }) => {
@@ -42,7 +49,6 @@ export const loader = async ({ request }) => {
     degraded,
     source,
     secretConfigured: isSecretConfigured(),
-    verificationAvailable: VERIFICATION_AVAILABLE,
   });
 };
 
@@ -77,8 +83,7 @@ export const action = async ({ request }) => {
 };
 
 export default function LogoUploadSettings() {
-  const { settings, degraded, secretConfigured, verificationAvailable } =
-    useLoaderData();
+  const { settings, degraded, secretConfigured } = useLoaderData();
   const actionData = useActionData();
   const navigation = useNavigation();
 
@@ -100,7 +105,6 @@ export default function LogoUploadSettings() {
             settings={settings}
             secretConfigured={secretConfigured}
             degraded={degraded}
-            verificationAvailable={verificationAvailable}
             saving={saving}
             saved={actionData?.saved}
             saveError={actionData?.saveError}
