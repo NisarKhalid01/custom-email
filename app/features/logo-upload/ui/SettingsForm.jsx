@@ -120,6 +120,36 @@ export default function SettingsForm({
               onChange={set("require_login")}
             />
 
+            {/* Deliberately a NOTE, not a control.
+
+                Whether the upload field is SHOWN is a theme concern, and the
+                theme already owns it in two places: the product's
+                custom.image_upload metafield, and (since T7) a per-template
+                checkbox in the theme editor. Adding a third switch here would
+                mean three places to check when the field does not appear, and
+                this one could not even see the other two. */}
+            <Banner tone="info" title="Showing or hiding the upload field">
+              <BlockStack gap="200">
+                <Text as="p">
+                  The upload field is <b>shown by default on every product
+                  template</b>. This page does not control that — it only
+                  controls whether shoppers must sign in first.
+                </Text>
+                <Text as="p">
+                  To hide it on a specific template: <b>Online Store → Themes →
+                  Customize</b>, open a product page using that template, select
+                  the product section, and untick{" "}
+                  <b>&ldquo;Show the logo upload field&rdquo;</b>.
+                </Text>
+                <Text as="p" tone="subdued">
+                  That checkbox applies to every product using that template. To
+                  hide the field for one product only, use the product&rsquo;s{" "}
+                  <code>custom.image_upload</code> metafield instead. Both must
+                  be on for the field to appear.
+                </Text>
+              </BlockStack>
+            </Banner>
+
             {/* Email verification (F2) was DECLINED on 2026-08-11: this store
                 uses Shopify's new customer accounts, which already sign shoppers
                 in with an emailed one-time code. A second code would verify an
