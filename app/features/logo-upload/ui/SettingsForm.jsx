@@ -120,6 +120,23 @@ export default function SettingsForm({
               onChange={set("require_login")}
             />
 
+            <Banner tone="warning" title="Maximum upload size is 4 MB">
+              <BlockStack gap="200">
+                <Text as="p">
+                  Files larger than this are rejected before they reach the app.
+                  This is a hard limit of the hosting platform (Vercel rejects
+                  any request body over ~4.5 MB) and <b>cannot be raised from
+                  this page</b>.
+                </Text>
+                <Text as="p" tone="subdued">
+                  The storefront now checks the size before uploading and tells
+                  the shopper the file is too large. Previously the upload simply
+                  failed with no explanation. This limit applies to the shipping
+                  and quote forms too — it is not specific to logo uploads.
+                </Text>
+              </BlockStack>
+            </Banner>
+
             {/* Deliberately a NOTE, not a control.
 
                 Whether the upload field is SHOWN is a theme concern, and the

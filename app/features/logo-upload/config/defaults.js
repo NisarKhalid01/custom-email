@@ -52,6 +52,24 @@ export const SETTINGS_SPEC = {
     help: "Sends a 6-digit code that must be entered before the upload is accepted.",
   },
 
+  // ---------------------------------------------------------------- limits
+  max_upload_mb: {
+    type: "integer",
+    default: 4,
+    min: 1,
+    max: 4,
+    // PUBLIC so the storefront can reject an oversized file BEFORE sending it.
+    // Without this the browser posts the whole thing, Vercel rejects it at the
+    // edge with 413 FUNCTION_PAYLOAD_TOO_LARGE, and — because that rejection
+    // happens before any of our code runs — the response carries no CORS
+    // headers. The shopper sees "Upload failed" and the console shows a
+    // misleading CORS error instead of "your file is too big".
+    public: true,
+    label: "Maximum upload size (MB)",
+    help:
+      "Vercel serverless functions reject any request body over ~4.5 MB, and that ceiling cannot be raised. 4 MB leaves room for the multipart overhead and the identity fields sent alongside the file.",
+  },
+
   // ---------------------------------------------------------------- timings
   verification_validity_days: {
     type: "integer",
