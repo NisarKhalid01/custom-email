@@ -9,7 +9,10 @@ import {
   BlockStack,
   InlineStack,
   Box,
+  TextField,
+  Icon,
 } from "@shopify/polaris";
+import { SearchIcon } from "@shopify/polaris-icons";
 
 /**
  * Admin list of logo uploads.
@@ -33,13 +36,19 @@ export default function UploadsTable({
   total,
   page,
   pageSize,
+  query,
+  onQueryChange,
+  searching,
+  hasSearch,
   gateEverEnabled,
   onPage,
 }) {
   const start = (page - 1) * pageSize;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  if (!total) {
+  // Nothing at all AND nothing typed — the store has simply never had an
+  // upload, so a search box over an empty table would just be noise.
+  if (!total && !hasSearch) {
     return (
       <Card>
         <EmptyState heading="No logo uploads recorded yet" image="">
@@ -112,11 +121,34 @@ export default function UploadsTable({
 
   return (
     <Card padding="0">
+      <Box padding="300">
+        <TextField
+          label="Search uploads"
+          labelHidden
+          value={query}
+          onChange={onQueryChange}
+          autoComplete="off"
+          placeholder="Search by customer email, customer ID, file name or product"
+          prefix={<Icon source={SearchIcon} />}
+          clearButton
+          onClearButtonClick={() => onQueryChange("")}
+        />
+      </Box>
+
       <IndexTable
         resourceName={{ singular: "upload", plural: "uploads" }}
         itemCount={uploads.length}
         headings={HEADINGS}
         selectable={false}
+        loading={searching}
+        emptyState={
+          <EmptyState heading="No matching uploads" image="">
+            <Text as="p">
+              Nothing matches “{query}”. Try a customer email, a file name or a
+              product handle.
+            </Text>
+          </EmptyState>
+        }
       >
         {rows}
       </IndexTable>
@@ -131,7 +163,8 @@ export default function UploadsTable({
               onNext={() => onPage(page + 1)}
             />
             <Text as="span" tone="subdued" variant="bodySm">
-              Page {page} of {totalPages} · {total} total
+              Page {page} of {totalPages} · {total}{" "}
+              {hasSearch ? "matching" : "total"}
             </Text>
           </InlineStack>
         </Box>

@@ -95,6 +95,39 @@ export async function insertLogoUpload(row) {
 }
 
 /**
+ * Turn a user's search box input into an ILIKE pattern.
+ *
+ * `%` and `_` are wildcards and `\` is the default escape character, so all
+ * three must be escaped — otherwise a shopper email containing an underscore
+ * would match far more rows than the admin typed, and a lone `%` would match
+ * everything.
+ *
+ * @param {string} q
+ * @returns {string|null} null when there is nothing to search for.
+ */
+function likePattern(q) {
+  const trimmed = String(q ?? "").trim();
+  if (!trimmed) return null;
+  return `%${trimmed.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
+/**
+ * The columns the admin search box looks at.
+ *
+ * Deliberately the same set the table renders — an admin searching for
+ * something they can see on screen should find it, and nothing else is
+ * discoverable enough to be worth the extra scan cost.
+ */
+function searchClause(sql, pattern) {
+  return sql`and (
+    customer_email ilike ${pattern}
+    or file_name ilike ${pattern}
+    or product_handle ilike ${pattern}
+    or customer_gid ilike ${pattern}
+  )`;
+}
+
+/**
  * List a store's uploads, newest first.
  *
  * Always scoped to a shop, so one store's admin can never see another's — same
@@ -105,6 +138,7 @@ export async function insertLogoUpload(row) {
  * @param {number} [opts.limit]
  * @param {number} [opts.offset]
  * @param {string} [opts.customerGid] Filter to one customer.
+ * @param {string} [opts.search] Free-text filter over customer/file/product.
  */
 export async function listLogoUploads(shop, opts = {}) {
   if (!shop) return [];
@@ -112,6 +146,7 @@ export async function listLogoUploads(shop, opts = {}) {
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number(opts.limit) || DEFAULT_LIMIT));
   const offset = Math.max(0, Number(opts.offset) || 0);
   const sql = getSql();
+  const pattern = likePattern(opts.search);
 
   // Two separate queries rather than one with a conditional fragment: the
   // customer filter hits a different index (shop, customer_gid) than the default
@@ -120,6 +155,7 @@ export async function listLogoUploads(shop, opts = {}) {
     return sql`
       select * from ${sql(TABLES.files)}
       where shop = ${shop} and customer_gid = ${opts.customerGid}
+      ${pattern ? searchClause(sql, pattern) : sql``}
       order by created_at desc
       limit ${limit} offset ${offset}
     `;
@@ -128,6 +164,7 @@ export async function listLogoUploads(shop, opts = {}) {
   return sql`
     select * from ${sql(TABLES.files)}
     where shop = ${shop}
+    ${pattern ? searchClause(sql, pattern) : sql``}
     order by created_at desc
     limit ${limit} offset ${offset}
   `;
@@ -136,15 +173,22 @@ export async function listLogoUploads(shop, opts = {}) {
 /**
  * Total rows for a shop, for pagination.
  *
+ * Takes the same `search` as `listLogoUploads` so the pager counts the filtered
+ * set — otherwise a search that matches three rows would still offer page 2.
+ *
  * @param {string} shop
+ * @param {object} [opts]
+ * @param {string} [opts.search]
  * @returns {Promise<number>}
  */
-export async function countLogoUploads(shop) {
+export async function countLogoUploads(shop, opts = {}) {
   if (!shop) return 0;
   const sql = getSql();
+  const pattern = likePattern(opts.search);
   const [row] = await sql`
     select count(*)::int as count from ${sql(TABLES.files)}
     where shop = ${shop}
+    ${pattern ? searchClause(sql, pattern) : sql``}
   `;
   return row?.count ?? 0;
 }
