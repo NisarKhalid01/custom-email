@@ -216,3 +216,66 @@ export async function getLogoUpload(id, shop) {
     return null;
   }
 }
+
+/**
+ * Is this Shopify file referenced by any OTHER upload row in the same shop?
+ *
+ * Guards the delete path. A file is normally one-to-one with a row, but nothing
+ * enforces that, and Shopify will happily hand back the same file if the same
+ * bytes were registered twice. Deleting the file for row A when row B still
+ * points at it would silently break B's download link — and B may be real
+ * customer artwork, not test data.
+ *
+ * @param {string} shopifyFileId
+ * @param {string} shop
+ * @param {string} exceptId  The row being deleted.
+ * @returns {Promise<boolean>} true when someone else still needs the file.
+ */
+export async function isFileSharedByOtherUploads(shopifyFileId, shop, exceptId) {
+  if (!shopifyFileId || !shop) return false;
+  const sql = getSql();
+  try {
+    const [row] = await sql`
+      select count(*)::int as count from ${sql(TABLES.files)}
+      where shop = ${shop}
+        and shopify_file_id = ${shopifyFileId}
+        and id <> ${exceptId}
+    `;
+    return (row?.count ?? 0) > 0;
+  } catch (err) {
+    // Fail CLOSED: if we cannot prove the file is unshared, keep it. An orphaned
+    // file is tidy-up; a deleted file another row depends on is data loss.
+    console.error(
+      "[logo-upload] shared-file check failed, keeping the file:",
+      err?.message ?? err,
+    );
+    return true;
+  }
+}
+
+/**
+ * Delete one upload row.
+ *
+ * Hard delete — there is no soft-delete column on this table and the feature
+ * exists to clear test data, so a tombstone would just be clutter.
+ *
+ * Scoped to the shop in the WHERE clause, not checked beforehand, so there is no
+ * window between the check and the delete and no way to remove another store's
+ * row by guessing a uuid.
+ *
+ * Unlike `insertLogoUpload`, this DOES throw: the admin pressed a button and is
+ * waiting for an answer, so a failure must surface rather than silently report
+ * success.
+ *
+ * @returns {Promise<boolean>} false when nothing matched (already deleted).
+ */
+export async function deleteLogoUpload(id, shop) {
+  if (!id || !shop) return false;
+  const sql = getSql();
+  const deleted = await sql`
+    delete from ${sql(TABLES.files)}
+    where id = ${id} and shop = ${shop}
+    returning id
+  `;
+  return deleted.length > 0;
+}

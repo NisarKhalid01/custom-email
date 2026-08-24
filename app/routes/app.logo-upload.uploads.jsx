@@ -13,6 +13,7 @@ import {
   countLogoUploads,
 } from "../features/logo-upload/server/uploads.server.js";
 import { getSettings } from "../features/logo-upload/server/settings.server.js";
+import { deleteUploadAction } from "../features/logo-upload/server/delete-actions.server.js";
 import UploadsTable from "../features/logo-upload/ui/UploadsTable.jsx";
 
 /**
@@ -74,6 +75,15 @@ export const loader = async ({ request }) => {
     });
   }
 };
+
+/**
+ * Deleting one upload — the Shopify file first, then the row.
+ *
+ * The implementation lives in the feature folder rather than inline, so it can be
+ * shared with the Form Submissions page, whose route file is frozen live code and
+ * cannot absorb this much logic.
+ */
+export const action = deleteUploadAction;
 
 /** How long to wait after the last keystroke before hitting the server. */
 const SEARCH_DEBOUNCE_MS = 300;

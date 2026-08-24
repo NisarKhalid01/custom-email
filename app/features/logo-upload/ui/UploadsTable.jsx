@@ -13,6 +13,7 @@ import {
   Icon,
 } from "@shopify/polaris";
 import { SearchIcon } from "@shopify/polaris-icons";
+import DeleteRowAction from "./DeleteRowAction.jsx";
 
 /**
  * Admin list of logo uploads.
@@ -29,6 +30,7 @@ const HEADINGS = [
   { title: "File" },
   { title: "Verified" },
   { title: "Uploaded" },
+  { title: "Actions" },
 ];
 
 export default function UploadsTable({
@@ -116,6 +118,15 @@ export default function UploadsTable({
       </IndexTable.Cell>
 
       <IndexTable.Cell>{formatDate(item.created_at)}</IndexTable.Cell>
+
+      <IndexTable.Cell>
+        <DeleteRowAction
+          id={item.id}
+          resourceLabel="upload"
+          primaryLabel={item.customer_email || "a guest"}
+          fileName={item.file_name}
+        />
+      </IndexTable.Cell>
     </IndexTable.Row>
   ));
 

@@ -21,6 +21,12 @@ import {
 import { SearchIcon, ViewIcon } from "@shopify/polaris-icons";
 import { useEffect, useMemo, useState } from "react";
 import { listFormSubmissions } from "../lib/supabase.server";
+import { deleteSubmissionAction } from "../features/logo-upload/server/delete-actions.server.js";
+import DeleteRowAction from "../features/logo-upload/ui/DeleteRowAction.jsx";
+
+// Deleting one submission — the attachment, then the row. Implemented in the
+// feature folder so this live page only gains an import and this line.
+export const action = deleteSubmissionAction;
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -164,15 +170,23 @@ export default function Index() {
         </IndexTable.Cell>
         <IndexTable.Cell>{formatDate(item.created_at)}</IndexTable.Cell>
         <IndexTable.Cell>
-          <Tooltip content="View submission">
-            <Button
-              onClick={() => navigate(`/app/submissions/${item.id}`)}
-              icon={ViewIcon}
-              accessibilityLabel="View submission"
-              variant="tertiary"
-              loading={pendingId === String(item.id)}
+          <InlineStack gap="100" wrap={false} blockAlign="center">
+            <Tooltip content="View submission">
+              <Button
+                onClick={() => navigate(`/app/submissions/${item.id}`)}
+                icon={ViewIcon}
+                accessibilityLabel="View submission"
+                variant="tertiary"
+                loading={pendingId === String(item.id)}
+              />
+            </Tooltip>
+            <DeleteRowAction
+              id={item.id}
+              resourceLabel="submission"
+              primaryLabel={item.email || "an unknown sender"}
+              fileName={fileName}
             />
-          </Tooltip>
+          </InlineStack>
         </IndexTable.Cell>
       </IndexTable.Row>
     );
