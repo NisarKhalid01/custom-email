@@ -27,7 +27,6 @@ const HEADINGS = [
   { title: "Customer" },
   { title: "Product" },
   { title: "File" },
-  { title: "Verified" },
   { title: "Uploaded" },
   { title: "Actions" },
 ];
@@ -104,16 +103,6 @@ export default function UploadsTable({
             {formatBytes(item.file_size)}
           </Text>
         </BlockStack>
-      </IndexTable.Cell>
-
-      <IndexTable.Cell>
-        {item.email_verified === true ? (
-          <Badge tone="success">Verified</Badge>
-        ) : (
-          <Text as="span" tone="subdued">
-            —
-          </Text>
-        )}
       </IndexTable.Cell>
 
       <IndexTable.Cell>{formatDate(item.created_at)}</IndexTable.Cell>
