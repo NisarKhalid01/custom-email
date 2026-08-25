@@ -5,7 +5,6 @@ import {
   Text,
   Link,
   EmptyState,
-  Pagination,
   BlockStack,
   InlineStack,
   Box,
@@ -160,26 +159,25 @@ export default function UploadsTable({
             </Text>
           </EmptyState>
         }
+        // Same footer pagination as the Submissions table, so both lists read
+        // the same. The handlers page through the URL rather than local state —
+        // this list is paginated in Postgres, not in the browser.
+        pagination={
+          total > pageSize
+            ? {
+                hasNext: page < totalPages,
+                hasPrevious: page > 1,
+                onNext: () => onPage(page + 1),
+                onPrevious: () => onPage(page - 1),
+                label: `${start + 1}–${Math.min(start + pageSize, total)} of ${total}${
+                  hasSearch ? " matching" : ""
+                }`,
+              }
+            : undefined
+        }
       >
         {rows}
       </IndexTable>
-
-      {totalPages > 1 && (
-        <Box padding="400">
-          <InlineStack align="center" gap="400" blockAlign="center">
-            <Pagination
-              hasPrevious={page > 1}
-              onPrevious={() => onPage(page - 1)}
-              hasNext={page < totalPages}
-              onNext={() => onPage(page + 1)}
-            />
-            <Text as="span" tone="subdued" variant="bodySm">
-              Page {page} of {totalPages} · {total}{" "}
-              {hasSearch ? "matching" : "total"}
-            </Text>
-          </InlineStack>
-        </Box>
-      )}
     </Card>
   );
 }

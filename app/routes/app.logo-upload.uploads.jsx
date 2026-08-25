@@ -5,7 +5,7 @@ import {
   useNavigation,
   useSearchParams,
 } from "@remix-run/react";
-import { Page, Layout, Banner, BlockStack } from "@shopify/polaris";
+import { Page, Banner, Box } from "@shopify/polaris";
 import { useEffect, useState } from "react";
 import { authenticate } from "../shopify.server";
 import {
@@ -136,30 +136,31 @@ export default function LogoUploadUploads() {
       subtitle="Which customer attached which logo, and on which product"
       fullWidth
     >
-      <Layout>
-        <Layout.Section>
-          <BlockStack gap="400">
-            {error && (
-              <Banner tone="critical" title="Could not load uploads">
-                {error}
-              </Banner>
-            )}
+      {error && (
+        <div style={{ marginBottom: "1rem" }}>
+          <Banner tone="critical" title="Could not load uploads">
+            <p>{error}</p>
+          </Banner>
+        </div>
+      )}
 
-            <UploadsTable
-              uploads={uploads}
-              total={total}
-              page={page}
-              pageSize={pageSize}
-              query={query}
-              onQueryChange={setQuery}
-              searching={navigation.state === "loading"}
-              hasSearch={Boolean(search)}
-              gateEverEnabled={gateEverEnabled}
-              onPage={goToPage}
-            />
-          </BlockStack>
-        </Layout.Section>
-      </Layout>
+      {/* Same wrapper as the Submissions page: `Layout` adds its own spacing and
+          made the two lists sit differently on the screen. The bottom padding
+          keeps the pagination footer off the edge of the viewport. */}
+      <Box paddingBlockEnd="800">
+        <UploadsTable
+          uploads={uploads}
+          total={total}
+          page={page}
+          pageSize={pageSize}
+          query={query}
+          onQueryChange={setQuery}
+          searching={navigation.state === "loading"}
+          hasSearch={Boolean(search)}
+          gateEverEnabled={gateEverEnabled}
+          onPage={goToPage}
+        />
+      </Box>
     </Page>
   );
 }
