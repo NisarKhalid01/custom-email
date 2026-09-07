@@ -1,0 +1,42 @@
+# Marker baseline — captured 2026-08-08 (theme main @ 638e458)
+#
+# For THEME files that the logo-upload work DOES edit (layout/theme.liquid and the 15 product
+# sections), a whole-file hash is useless. Instead we assert that the markers belonging to the
+# OTHER uploaders survive untouched. See TASKS.md §0.4 for the uploader inventory.
+#
+# Format: <name> <op> <expected>     op is = (exact)
+#
+# Rationale per marker:
+
+# Both counts below were 16 and 19 at capture. Re-captured 2026-09-08 to 17 and 19+1: the theme
+# gained `sections/custom-products-main-free-quote-multi-color.liquid` in theme commit d7ebf3f
+# ("add free quote multi-color product template"), and that ONE new section contains both an
+# `id="fileInput"` and a `render "custom-logo-form"` — which is why both rose by exactly one, in
+# step. Nothing was removed. This is somebody else's product work, not the logo-upload feature.
+#
+# The direction matters when reading a future failure: counts rising together is a new section
+# being added, which is routine. A count FALLING means an uploader was deleted — investigate.
+
+# Uploader #1 — the input we gate. T7 must not add or remove any; it only wraps them
+# in an extra `if`. A change here means a section was duplicated or deleted by mistake.
+fileInput_exact = 17
+
+# Uploader #2 — the shipping form. Rendered by 20 sections. Must be completely untouched.
+custom_logo_form_renders = 20
+
+# Uploader #2/#3 driver — must stay rendered UNCONDITIONALLY from layout/theme.liquid:548.
+# Gating this on custom.image_upload previously broke the shipping-quote modal's trigger
+# and close button (there is a comment in theme.liquid recording that incident).
+quote_request_form_js_renders = 1
+
+# The OLD upload snippet must remain rendered — after T6 it lives in the `else` branch and is
+# the one-line rollback. If this hits 0, the rollback path has been deleted.
+mo_upload_image_js_renders = 1
+
+# Uploader #4 — the App Proxy (`/apps/file-upload`) belonging to a DIFFERENT app, in
+# main-line-product.liquid and main-line-product-badge-display.liquid. Out of scope (Q8).
+# Those two files are edited by T7, so this guards the part that must not move.
+app_proxy_file_upload = 2
+
+# Uploader #2/#3 endpoints in quote-request-form-js.liquid.
+save_shipping_calls = 2

@@ -1,0 +1,48 @@
+# Frozen-file baseline — captured 2026-08-08 from app main @ 236e5a0 / theme main @ 638e458
+#
+# These files run the LIVE store. Nothing in the logo-upload work may modify them.
+# Verify at any time with:  bash scripts/check-no-break.sh
+#
+# Format: <sha256>  <REPO>:<path>
+# REPO is APP (this repo) or THEME (../../logo-mat).
+#
+# If a hash mismatch is reported, STOP. Either the change was unintended (revert it)
+# or it is a deliberate scope change that must be added to TASKS.md §5 first.
+
+# --- APP: upload + form endpoints (uploaders #1, #2, #3 in TASKS.md §0.4) ---
+e32d5baee7bbdc1ca4c1a17e0ff21a547cc3375bc4fd63e03a7e3bc733e12349  APP:app/routes/api.upload.jsx
+f337c4436f5c85e67713deb3db62640814a0bd6844ad8d3ccf98e483e90adf46  APP:app/routes/api.save-shipping.jsx
+ca60093dce230106a6e06eabfbac68a9b7549bac309dd53f01fcbcd42c2e4a35  APP:app/routes/api.save-shipping-info.jsx
+6a94f2fc1692189e80f4fc2a0ab2edde8a6d74de72e1a9f0e4d5ec442ae912f4  APP:app/routes/api.eps.upload.jsx
+55149ee9b0057b79f8f0af40a8cb8e0b63238e1da0dd5131946a293183148d8a  APP:app/routes/api.eps.staged.jsx
+fdf9038ceee9e0e5bc8e49e4348cadacda14c032b73f876442322a791866e4ba  APP:app/routes/api.eps.register.jsx
+cf5e6753df503f852c4ff238bce3adb6da85a87224b6a5eaf19b862a37d4a212  APP:app/routes/emailsend.jsx
+
+# --- APP: the admin shell ---
+# Added in A15, AFTER its 2-line NavMenu change (the only edit this feature makes to it).
+# Frozen from here on: any further edit must be deliberate and reviewed.
+fa39f7be4c34f8cf81d3664b6f034e54f901e59cbee21b12c792287d444e0180  APP:app/routes/app.jsx
+
+# --- APP: existing admin pages ---
+# app._index.jsx re-captured 2026-08-25 for A17 (admin row delete). Its only edit is an
+# import, `export const action = deleteSubmissionAction`, and an InlineStack around the
+# existing View button — see TASKS.md §5.4. Frozen again from here.
+2d116f546c0bd1f647a925dbe9c4291afda0a1587c99b131f3602867bff58f6a  APP:app/routes/app._index.jsx
+e51221b64d2604fe10a3bbea69c1a93f314d19b2dd6094fb33923d9fef3006cc  APP:app/routes/app.submissions.$id.jsx
+
+# --- APP: shared libs the new code IMPORTS but must never EDIT ---
+86115680a01edf9435e1ccf5547fc998fb42168c37ed76b924c7ab66b64b3bd7  APP:app/lib/shopify-files.server.js
+3b2d445283a74debe75bc4500e0c707427f7bbefa8c944e65e56585fa66c7fa5  APP:app/lib/supabase.server.js
+
+# --- APP: existing migrations (new ones are added, these never change) ---
+905c62b30a62e9e1a70f289628a5850a6b0ff2fab95bc9437aea58a1b50ae825  APP:supabase/migrations/20250618074915_create_session.sql
+5a7950f0be4d1e28943dd7f9b920ff7b201cecef1698d80b4b747031637c6015  APP:supabase/migrations/20260717000000_create_form_submissions.sql
+8d3d51a1ceb8060292575cf7d9c7a87f12ee6be30081eee535d97f75f7152c09  APP:supabase/migrations/20260718000000_add_shop_to_form_submissions.sql
+8f7d0d284c43deac174eff408046ae589f82635cda01c4bc2672350433121cd9  APP:supabase/migrations/20260731000000_add_product_id_to_form_submissions.sql
+
+# --- THEME: the live upload + form JS (uploaders #1, #2, #3) ---
+8c483684f419116b77ac2b84b3a9f9ac91c06ede7ca1e303fe40f2b3464fca5e  THEME:snippets/mo-upload-image-js.liquid
+8e53346c2e9f28028ac241b82c09aa3f2671bcaca5ea3763aed0f2ab01b3cb9c  THEME:snippets/quote-request-form-js.liquid
+7677e52e2fd6a2231ffe41571119b9068528262dce88249ada069a4b03c180f7  THEME:snippets/quote-request.liquid
+2bcb1ce12c25c43c6a88cb4e6e1c65e764b2073ebd61006909be2634a663ac76  THEME:snippets/custom-logo-form.liquid
+75af5f9947394284a08523b00c9cde4d2ab3f7a03ed472569f140c57e03b06b4  THEME:snippets/quote-form.liquid
