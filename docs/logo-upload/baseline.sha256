@@ -27,8 +27,8 @@ fa39f7be4c34f8cf81d3664b6f034e54f901e59cbee21b12c792287d444e0180  APP:app/routes
 # app._index.jsx re-captured 2026-08-25 for A17 (admin row delete). Its only edit is an
 # import, `export const action = deleteSubmissionAction`, and an InlineStack around the
 # existing View button — see TASKS.md §5.4. Frozen again from here.
-2d116f546c0bd1f647a925dbe9c4291afda0a1587c99b131f3602867bff58f6a  APP:app/routes/app._index.jsx
-e51221b64d2604fe10a3bbea69c1a93f314d19b2dd6094fb33923d9fef3006cc  APP:app/routes/app.submissions.$id.jsx
+5c49aedaec180f8b156f01df2d71e06e4a7fec7ba8f7676ab7b6f72c495c7a1b  APP:app/routes/app._index.jsx
+be2fe9bfe5b0eaf249213f15e0ac43569975fbaa838b0cfca2bb4d63ff9dbd4b  APP:app/routes/app.submissions.$id.jsx
 
 # --- APP: shared libs the new code IMPORTS but must never EDIT ---
 86115680a01edf9435e1ccf5547fc998fb42168c37ed76b924c7ab66b64b3bd7  APP:app/lib/shopify-files.server.js

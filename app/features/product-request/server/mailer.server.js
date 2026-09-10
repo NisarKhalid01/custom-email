@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { groupPayload } from "../config/fields.js";
 
 /**
  * Email for the Product Request Form.
@@ -26,96 +27,6 @@ const NOTIFY_RECIPIENTS = ["sales@logomatcentral.com"];
 const REPLY_TO = "sales@logomatcentral.com";
 
 /**
- * Keys that never appear in the emailed field list.
- *
- * Context fields are shown in the header line or stored as columns; the identity
- * trio and the honeypot are plumbing that would otherwise render as rows like
- * "Customer Sig: 7f3a9c…" in every notification to sales.
- */
-const NOT_A_FIELD = new Set([
-  "form_source",
-  "title",
-  "product_url",
-  "product_handle",
-  "product_id",
-  "shop",
-  "attachment",
-  "customer_gid",
-  "customer_email",
-  "customer_sig",
-  "login_override",
-  "verification_override",
-  "prf_website",
-]);
-
-/**
- * Mirrors `prf_field_order` in snippets/product-request-form.liquid, so the
- * notification reads in the order the shopper filled it in.
- *
- * Anything NOT listed here is still emailed, under "Other details". The form is
- * designed to grow by adding a key to that order list, and a new field must
- * never silently vanish from the email because this map was not updated with it.
- */
-const SECTIONS = [
-  ["Your Details", ["name", "company", "email", "phone"]],
-  ["Shipping Address", ["street", "apt", "country", "state", "city", "zip"]],
-  [
-    "Product Details",
-    [
-      "mat_type",
-      "quantity",
-      "background_color",
-      "variant_id",
-      "variation_option",
-      "logo_orientation",
-      "logo_colors",
-      "logo_edging",
-      "logo_corners",
-    ],
-  ],
-  [
-    "Product Options",
-    [
-      "surface",
-      "style",
-      "backing",
-      "border",
-      "pattern",
-      "line_1",
-      "line_2",
-      "line_3",
-      "line_4",
-      "line_5",
-    ],
-  ],
-  [
-    "Coin Specification",
-    [
-      "coin_quantity",
-      "coin_diameter",
-      "coin_thickness",
-      "coin_metal",
-      "coin_shape",
-    ],
-  ],
-  ["Delivery Requirements", ["loading_dock", "liftgate", "cartons"]],
-  ["Artwork and Notes", ["comments"]],
-];
-
-/** Labels whose humanised form would be wrong or unhelpful. */
-const LABELS = {
-  apt: "Apt / Suite",
-  zip: "ZIP / Postal Code",
-  mat_type: "Type of Mat",
-  variant_id: "Size",
-  variation_option: "Thickness / Logo Colors",
-  logo_colors: "Color Options",
-  background_color: "Base Mate Color",
-  coin_quantity: "Coin Quantity",
-  loading_dock: "Loading Dock",
-};
-
-/**
  * Escape before interpolating into HTML.
  *
  * Both legacy routes drop raw form input straight into their templates, so a
@@ -131,41 +42,27 @@ function escapeHtml(value) {
   );
 }
 
-function labelFor(key) {
-  return (
-    LABELS[key] ||
-    key.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-  );
-}
-
-function isBlank(value) {
-  if (value === null || value === undefined) return true;
-  if (Array.isArray(value)) return value.length === 0;
-  return String(value).trim() === "";
-}
-
-/** `logo_colors` is an array; join it rather than letting String() give "A,B". */
-function formatValue(value) {
-  return Array.isArray(value) ? value.join(", ") : String(value ?? "");
-}
-
-function row(key, value) {
-  if (isBlank(value)) return "";
-  return `<tr><td style="padding:4px 12px 4px 0;color:#666;vertical-align:top;white-space:nowrap;">${escapeHtml(
-    labelFor(key),
-  )}</td><td style="padding:4px 0;color:#111;"><strong>${escapeHtml(
-    formatValue(value),
-  )}</strong></td></tr>`;
-}
-
-function table(body) {
-  return `<table style="border-collapse:collapse;font-size:14px;">${body}</table>`;
-}
-
-function heading(text) {
-  return `<h3 style="margin:22px 0 6px;font-size:15px;border-bottom:1px solid #e5e5e5;padding-bottom:5px;">${escapeHtml(
-    text,
-  )}</h3>`;
+function renderGroups(payload) {
+  // Field order, labels and grouping come from config/fields.js, which the admin
+  // detail page also uses -- so the email and the admin can never disagree about
+  // how a submission reads.
+  return groupPayload(payload)
+    .map(({ heading, rows }) => {
+      const body = rows
+        .map(
+          (r) =>
+            `<tr><td style="padding:4px 12px 4px 0;color:#666;vertical-align:top;white-space:nowrap;">${escapeHtml(
+              r.label,
+            )}</td><td style="padding:4px 0;color:#111;"><strong>${escapeHtml(
+              r.value,
+            )}</strong></td></tr>`,
+        )
+        .join("");
+      return `<h3 style="margin:22px 0 6px;font-size:15px;border-bottom:1px solid #e5e5e5;padding-bottom:5px;">${escapeHtml(
+        heading,
+      )}</h3><table style="border-collapse:collapse;font-size:14px;">${body}</table>`;
+    })
+    .join("");
 }
 
 /**
@@ -180,28 +77,7 @@ function heading(text) {
  */
 export function buildNotification(data, opts = {}) {
   const { mediaUrl, mediaName, customerGid, droppedFile } = opts;
-  const blocks = [];
-  const used = new Set();
-
-  for (const [title, keys] of SECTIONS) {
-    const body = keys
-      .map((key) => {
-        used.add(key);
-        return row(key, data[key]);
-      })
-      .join("");
-    if (body) blocks.push(heading(title) + table(body));
-  }
-
-  const leftovers = Object.keys(data).filter(
-    (key) => !used.has(key) && !NOT_A_FIELD.has(key) && !isBlank(data[key]),
-  );
-  if (leftovers.length) {
-    blocks.push(
-      heading("Other details") +
-        table(leftovers.map((key) => row(key, data[key])).join("")),
-    );
-  }
+  const blocks = renderGroups(data);
 
   const product = data.product_url
     ? `<p style="font-size:13px;color:#666;">Product: <a href="${escapeHtml(
@@ -240,7 +116,7 @@ export function buildNotification(data, opts = {}) {
     ${product}
     ${account}
     ${attachment}
-    ${blocks.join("")}
+    ${blocks}
   </div>`;
 }
 

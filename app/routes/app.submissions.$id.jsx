@@ -16,6 +16,10 @@ import {
 } from "@shopify/polaris";
 import React from "react";
 import { getFormSubmission } from "../lib/supabase.server";
+import {
+  FORM_TYPE as PRODUCT_REQUEST_FORM_TYPE,
+  groupPayload,
+} from "../features/product-request/config/fields.js";
 
 export const loader = async ({ request, params }) => {
   const { session } = await authenticate.admin(request);
@@ -50,6 +54,9 @@ export const loader = async ({ request, params }) => {
 const FORM_META = {
   shipping_form: { label: "Shipping Info", tone: "info" },
   request_quote: { label: "Quote Request", tone: "attention" },
+  // Keep in step with the same map in app._index.jsx, or the detail page badge
+  // shows the raw form_type slug while the list shows the friendly label.
+  request_quote_new: { label: "Request Quote New", tone: "success" },
 };
 
 // Columns already shown as structured fields — don't repeat them in the raw list.
@@ -115,6 +122,19 @@ export default function SubmissionDetail() {
       value !== undefined &&
       String(value).trim() !== "",
   );
+
+  // The Product Request Form is rendered in the storefront form's own sections
+  // and order. Stored jsonb cannot supply that: Postgres orders jsonb keys by
+  // length then bytewise, which is why a flat listing reads "Zip, City, Name,
+  // Shop, Email…". The grouping comes from the same config the notification
+  // email uses, so the two can never disagree.
+  //
+  // Scoped to this form type ON PURPOSE. The two legacy forms are live, and
+  // their existing records keep rendering exactly as they do today.
+  const groupedPayload =
+    submission.form_type === PRODUCT_REQUEST_FORM_TYPE
+      ? groupPayload(payload)
+      : null;
 
   return (
     <Page
@@ -209,7 +229,27 @@ export default function SubmissionDetail() {
         <LegacyCard title="Submitted details" sectioned>
           <BlockStack gap="300">
             <Divider />
-            {payloadEntries.length === 0 ? (
+            {groupedPayload ? (
+              groupedPayload.length === 0 ? (
+                <Text variant="bodySm" tone="subdued">
+                  No additional fields.
+                </Text>
+              ) : (
+                groupedPayload.map((group) => (
+                  <BlockStack key={group.heading} gap="150">
+                    <Text variant="headingSm" as="h3">
+                      {group.heading}
+                    </Text>
+                    {group.rows.map((row) => (
+                      <Text key={row.key} variant="bodySm">
+                        <strong>{row.label}:</strong> {row.value}
+                      </Text>
+                    ))}
+                    <Divider />
+                  </BlockStack>
+                ))
+              )
+            ) : payloadEntries.length === 0 ? (
               <Text variant="bodySm" tone="subdued">
                 No additional fields.
               </Text>

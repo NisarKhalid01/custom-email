@@ -45,12 +45,17 @@ export const loader = async ({ request }) => {
 const FORM_META = {
   shipping_form: { label: "Shipping Info", tone: "info" },
   request_quote: { label: "Quote Request", tone: "attention" },
+  // The third storefront form (snippets/product-request-form.liquid ->
+  // /api/product-request). Without this entry the badge falls back to the raw
+  // form_type slug.
+  request_quote_new: { label: "Request Quote New", tone: "success" },
 };
 
 const FORM_OPTIONS = [
   { label: "All forms", value: "all" },
   { label: "Shipping Info", value: "shipping_form" },
   { label: "Quote Request", value: "request_quote" },
+  { label: "Request Quote New", value: "request_quote_new" },
 ];
 
 function formatDate(value) {
