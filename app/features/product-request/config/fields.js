@@ -73,7 +73,9 @@ export const SECTIONS = [
       "coin_shape",
     ],
   ],
-  ["Delivery Requirements", ["loading_dock", "liftgate", "cartons"]],
+  // `cartons` was removed from the storefront form. The legacy Shipping Info
+  // form still collects it, but that one has its own route and templates.
+  ["Delivery Requirements", ["loading_dock", "liftgate"]],
   ["Artwork and Notes", ["comments"]],
 ];
 
@@ -113,7 +115,6 @@ const LABELS = {
   coin_quantity: "Coin Quantity",
   loading_dock: "Loading Dock",
   liftgate: "Liftgate",
-  cartons: "Rolls / Cartons",
   comments: "Comments / Special Instructions",
 };
 
