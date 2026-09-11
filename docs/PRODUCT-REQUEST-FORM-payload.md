@@ -96,8 +96,12 @@ submissions apart from the two legacy forms if they share a table.
 | `quantity` | number. `min`/`max` attributes are rendered from `special_requirements` / `maximum_order`, but they are **advisory only** — the form is `novalidate` and its `validate()` checks emptiness, not bounds. **Validate the range server-side.** |
 | `variant_id` | size, as a variant **title** string, not an id — same as both legacy forms |
 | `loading_dock`, `liftgate` | `"Yes"` / `"No"`, default `"No"` |
-| `cartons` | may be empty |
 | `comments` | may be empty |
+
+`cartons` (Number of Rolls / Cartons) was **removed** from this form, along with
+the `range100` field type that drew it. The legacy Shipping Info form still
+collects it and `api.save-shipping-info.jsx` still emails it — that route is
+frozen and unaffected. Nothing in this form sends it any more.
 
 ### Conditional — metafield driven (any template)
 
@@ -150,7 +154,11 @@ courtesy — re-check the size server-side.
 
 ## Gotcha: `logo_colors` repeats
 
-It is a `<select multiple>`. Multiple values arrive under the **same key**:
+It is a swatch picker backed by **checkboxes that all share the name
+`logo_colors`** — not a `<select multiple>` (that was the first attempt, dropped
+because picking more than one needed Ctrl/Cmd+click, which does not exist on
+touch). Deliberately *not* the PDP's single joined hidden input either, so the
+values stay separable. Multiple values therefore arrive under the **same key**:
 
 ```js
 const colors = formData.getAll('logo_colors');   // ["Purple (PMS 2627U)", "Blue (PMS 286U)"]
@@ -207,10 +215,16 @@ How the storefront behaves now:
 - **Logged out** — a banner sits above the fields ("Log in to attach your logo
   file. You can fill everything else in first — we will keep it for you") and
   the file input is `disabled` with the hint "Log in to attach a file."
-- The form auto-saves to `localStorage` on every keystroke, so the login
-  redirect costs the shopper nothing. On return the values are restored, the
-  modal reopens and the page scrolls to the Upload field. Drafts expire after
-  **24 hours**.
+- The draft is saved to `localStorage` **only when the Log in button is
+  clicked** — not on every keystroke. It is read back in exactly one place, the
+  return from login, so a continuous save would achieve nothing except leaving
+  the shopper's name, email, phone and address in `localStorage` for anyone on a
+  shared machine to find. On return the values are restored, the modal reopens
+  and the page scrolls to the Upload field. Drafts expire after **24 hours**.
+- The five identity fields are excluded from the draft (`SKIP_SAVE`). They are
+  page state, not shopper input: `restoreDraft()` runs *after* `fillIdentity()`,
+  so a saved logged-out signature would otherwise overwrite the fresh logged-in
+  one and every post-login upload would look anonymous.
 - The file itself is never saved — browsers forbid setting a file input's
   value — so the artwork is always re-picked after login. That is the step the
   shopper was on anyway.
