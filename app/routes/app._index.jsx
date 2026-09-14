@@ -25,6 +25,7 @@ import { deleteSubmissionAction } from "../features/logo-upload/server/delete-ac
 import DeleteRowAction from "../features/logo-upload/ui/DeleteRowAction.jsx";
 import DraftOrderAction from "../features/product-request/ui/DraftOrderAction.jsx";
 import { FORM_TYPE as PRODUCT_REQUEST_FORM_TYPE } from "../features/product-request/config/fields.js";
+import { syncDraftOrderStatuses } from "../features/product-request/server/status-sync.server.js";
 
 // Deleting one submission — the attachment, then the row. Implemented in the
 // feature folder so this live page only gains an import and this line.
@@ -34,10 +35,16 @@ import { FORM_TYPE as PRODUCT_REQUEST_FORM_TYPE } from "../features/product-requ
 export const action = deleteSubmissionAction;
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   // logo-mat-central.myshopify.com -> logo-mat-central, for admin deep links to
   // draft orders and orders. Same derivation as app.submissions.$id.jsx.
   const storeHandle = (session.shop || "").replace(/\.myshopify\.com$/, "");
+
+  // Has any open draft order become a real order since the last view? Runs
+  // BEFORE the listing so the fresh status is the one rendered. Swallows its own
+  // failures by contract — it must never break this page, which the two legacy
+  // forms also depend on. No open drafts means no Shopify call at all.
+  await syncDraftOrderStatuses(admin, session.shop);
 
   try {
     // Scoped to the authenticated store only.

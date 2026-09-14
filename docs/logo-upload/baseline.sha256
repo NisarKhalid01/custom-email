@@ -27,7 +27,7 @@ fa39f7be4c34f8cf81d3664b6f034e54f901e59cbee21b12c792287d444e0180  APP:app/routes
 # app._index.jsx re-captured 2026-08-25 for A17 (admin row delete). Its only edit is an
 # import, `export const action = deleteSubmissionAction`, and an InlineStack around the
 # existing View button — see TASKS.md §5.4. Frozen again from here.
-4b17145af34f0a7f86473e1efe142b1fad4b193bb847cfa632f131e0f329799b  APP:app/routes/app._index.jsx
+875c5e6e32b45b29e614c018f7237d419d040784bb8ff3ad2dcaa831686311bd  APP:app/routes/app._index.jsx
 be2fe9bfe5b0eaf249213f15e0ac43569975fbaa838b0cfca2bb4d63ff9dbd4b  APP:app/routes/app.submissions.$id.jsx
 
 # --- APP: shared libs the new code IMPORTS but must never EDIT ---

@@ -11,7 +11,7 @@
 | **1** — data layer | ✅ **done 2026-09-15** — migration applied, 13/13 checks pass |
 | **2** — draft order creation | ✅ **built 2026-09-15**, 28/28 logic checks · ⚠️ untestable until 0.3 lands |
 | **3** — admin UI | ✅ **built 2026-09-15** · untested in the browser |
-| **4** — completion tracking | ⬜ not started |
+| **4** — completion tracking | ✅ **built 2026-09-15**, 6/6 checks · 4.4 webhook deferred |
 | **5** — email | ⬜ waiting on requirements |
 
 Keep this table current as each phase lands — it is the first thing anyone
@@ -358,7 +358,25 @@ has a `draft_order_id`, and creating one needs the scopes.
 
 ---
 
-## Phase 4 — Completion tracking
+## Phase 4 — Completion tracking ✅ BUILT (2026-09-15)
+
+**Landed:** `fetchDraftOrderStatuses()` in `draft-order.server.js` (one batched
+`nodes` query) and `server/status-sync.server.js` holding the sweep. The frozen
+`app._index.jsx` gained one import and one `await` in its loader; baseline
+re-blessed `4b17145a…` -> `875c5e6e…`.
+
+**6/6 checks against the real database**, including the two that matter: a
+Shopify 403 — today's actual state — is swallowed and the listing still renders,
+and a shop with no open drafts makes **zero** Shopify calls, which is what makes
+this acceptable on every page load.
+
+**The contract:** this runs in front of a listing the two LEGACY forms also
+depend on, so it swallows every failure by design. A Shopify outage, a missing
+scope or a revoked token degrades to "shows the last known status", never to a
+broken page. `attachOrder` is write-once, so two concurrent loads cannot both
+claim the same completion.
+
+
 
 - **4.1** Batched status read per D2, in
   `app/features/product-request/server/draft-order.server.js`: given the open

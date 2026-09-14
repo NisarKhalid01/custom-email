@@ -188,6 +188,43 @@ export function buildLineItemAttributes(payload) {
 }
 
 /**
+ * Read the current state of several draft orders in ONE request.
+ *
+ * `DraftOrder.order` is the authoritative link to the order a draft was
+ * completed into — Shopify tells us, we never infer it from an order webhook or
+ * from matching on customer/total.
+ *
+ * Batched via `nodes` because this runs on every admin list load; one query for
+ * a page of drafts rather than one per row. `nodes` accepts up to 250 ids and
+ * the caller caps well below that.
+ *
+ * @param {string[]} gids draft order gids
+ * @returns {Promise<Array<{id: string, status: string, order: object|null}>>}
+ */
+export async function fetchDraftOrderStatuses(admin, gids) {
+  if (!gids?.length) return [];
+  const data = await graphql(
+    admin,
+    `#graphql
+      query PrDraftOrderStatuses($ids: [ID!]!) {
+        nodes(ids: $ids) {
+          ... on DraftOrder {
+            id
+            name
+            status
+            order { id name }
+          }
+        }
+      }
+    `,
+    { ids: gids },
+  );
+  // A deleted draft order comes back as null in the array — skip rather than
+  // treating it as an error, since a merchant may legitimately have removed one.
+  return (data?.nodes ?? []).filter((n) => n && n.id);
+}
+
+/**
  * Create the draft order.
  *
  * Priced by Shopify from the variant — `variant_price` in the payload is an
