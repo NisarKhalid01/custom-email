@@ -20,6 +20,7 @@ import {
   FORM_TYPE as PRODUCT_REQUEST_FORM_TYPE,
   groupPayload,
 } from "../features/product-request/config/fields.js";
+import DraftOrderAction from "../features/product-request/ui/DraftOrderAction.jsx";
 
 export const loader = async ({ request, params }) => {
   const { session } = await authenticate.admin(request);
@@ -141,13 +142,27 @@ export default function SubmissionDetail() {
       backAction={{ content: "Submissions", url: "/app" }}
       title={submission.email || submission.company || "Submission"}
       titleMetadata={
-        <InlineStack gap="200">
+        <InlineStack gap="200" blockAlign="center">
           <Badge tone={meta.tone}>{meta.label}</Badge>
           {submission.email_status === "true" ? (
             <Badge tone="success">Sent</Badge>
           ) : (
             <Badge tone="critical">Failed</Badge>
           )}
+          {/* Draft-order state sits with the email state because they answer the
+              same question — what has happened to this request so far. Only the
+              Product Request form records a priced variant, so only it can raise
+              a draft order; the two legacy forms render exactly as before. */}
+          {submission.form_type === PRODUCT_REQUEST_FORM_TYPE ? (
+            <DraftOrderAction
+              id={submission.id}
+              storeHandle={storeHandle}
+              draftOrderId={submission.draft_order_id}
+              draftOrderName={submission.draft_order_name}
+              orderId={submission.order_id}
+              orderName={submission.order_name}
+            />
+          ) : null}
         </InlineStack>
       }
     >

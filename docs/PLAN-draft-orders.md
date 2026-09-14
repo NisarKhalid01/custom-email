@@ -6,11 +6,11 @@
 
 | Phase | State |
 |---|---|
-| **T** — theme sends a real variant | ✅ built & reviewed · ⚠️ **untested in a browser** |
-| **0** — scopes | ✅ granted in the Dev Dashboard (2026-09-15) · ⏳ 0.3 merchant re-approval + 0.4 verify |
+| **T** — theme sends a real variant | ✅ **verified live** — a submission carried a real `variant_gid` |
+| **0** — scopes | ✅ **complete** — proven by a real draft order (#D1361) |
 | **1** — data layer | ✅ **done 2026-09-15** — migration applied, 13/13 checks pass |
-| **2** — draft order creation | ✅ **built 2026-09-15**, 28/28 logic checks · ⚠️ untestable until 0.3 lands |
-| **3** — admin UI | ✅ **built 2026-09-15** · untested in the browser |
+| **2** — draft order creation | ✅ **working against live Shopify** (#D1361, 2026-09-15) |
+| **3** — admin UI | ✅ **done** — list + detail page (3.7) |
 | **4** — completion tracking | ✅ **built 2026-09-15**, 6/6 checks · 4.4 webhook deferred |
 | **5** — email | ⬜ waiting on requirements |
 
@@ -188,8 +188,14 @@ completely inaccessible today; every call would 403.
 - **0.3** ⚠️ **The merchant must re-approve the app.** Until they do, the new
   scopes are not granted and draft-order calls fail with 403. The app already has
   a `webhooks.app.scopes_update` route, so the grant change is observable.
-- **0.4** Confirm the scope actually landed before building against it — query
-  `currentAppInstallation { accessScopes { handle } }` rather than assuming.
+- **0.4** ✅ Confirmed by a successful `draftOrderCreate` (#D1361).
+
+  ⚠️ **Do NOT use the `Session.scope` column to check this.** It still reads
+  `write_files, write_products, write_content` even though draft orders demonstrably
+  work. With `unstable_newEmbeddedAuthStrategy` the app uses token exchange, minting
+  a token per request with scopes resolved then; `Session.scope` holds whatever the
+  ORIGINAL OAuth install recorded and is only refreshed by the `scopes_update`
+  webhook. It gives a false negative. A successful mutation is the evidence.
 
 **0.3 and 0.4 still gate Phase 2.** Phase 1 is pure database work and does not
 depend on either.
@@ -354,7 +360,11 @@ has a `draft_order_id`, and creating one needs the scopes.
   legacy forms render exactly as they do today.
 - **3.6** Block the delete action when `draft_order_id` is set (D3), with the
   "cancel the draft in Shopify first" message.
-- **3.7 (optional)** Same status block on the detail page — second frozen edit.
+- **3.7** ✅ **DONE (2026-09-15)** — `DraftOrderAction` now also renders on
+  `app/routes/app.submissions.$id.jsx`, inline with the Sent/Failed badge, since
+  both answer the same question: what has happened to this request so far.
+  Gated on form type; the two legacy forms render exactly as before. Baseline
+  re-blessed `be2fe9bf…` -> `5aa4fc98…`.
 
 ---
 
