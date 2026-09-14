@@ -161,6 +161,7 @@ export default function SubmissionDetail() {
               draftOrderName={submission.draft_order_name}
               orderId={submission.order_id}
               orderName={submission.order_name}
+              inline
             />
           ) : null}
         </InlineStack>

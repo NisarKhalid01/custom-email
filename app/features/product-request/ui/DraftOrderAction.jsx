@@ -39,6 +39,11 @@ function adminUrl(storeHandle, kind, gid) {
   return `https://admin.shopify.com/store/${storeHandle}/${kind}/${id}`;
 }
 
+/**
+ * @param {boolean} inline Put the badge and its number on ONE line. The detail
+ *   page sits them beside the Sent/Failed badge, where a two-line block breaks
+ *   the run of badges; the list has a narrow column where stacking reads better.
+ */
 export default function DraftOrderAction({
   id,
   storeHandle,
@@ -46,6 +51,7 @@ export default function DraftOrderAction({
   draftOrderName,
   orderId,
   orderName,
+  inline = false,
 }) {
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle";
@@ -61,11 +67,16 @@ export default function DraftOrderAction({
   const draftGid = result?.ok ? (result.draftOrderId ?? draftOrderId) : draftOrderId;
   const draftName = result?.ok ? (result.draftOrderName ?? draftOrderName) : draftOrderName;
 
+  // Badge and number share a line when `inline`, stack otherwise. The outer
+  // BlockStack stays either way so warnings never land beside the badge.
+  const Pair = inline ? InlineStack : BlockStack;
+  const pairGap = inline ? "150" : "050";
+
   /* ---- completed ---- */
   if (orderId) {
     const url = adminUrl(storeHandle, "orders", orderId);
     return (
-      <BlockStack gap="050">
+      <Pair gap={pairGap} blockAlign="center">
         <Badge tone="success">Order Completed</Badge>
         {url ? (
           <Link url={url} target="_blank">
@@ -74,7 +85,7 @@ export default function DraftOrderAction({
         ) : (
           <Text variant="bodySm" as="span">{orderName || "—"}</Text>
         )}
-      </BlockStack>
+      </Pair>
     );
   }
 
@@ -83,14 +94,16 @@ export default function DraftOrderAction({
     const url = adminUrl(storeHandle, "draft_orders", draftGid);
     return (
       <BlockStack gap="050">
-        <Badge tone="info">Draft Created</Badge>
-        {url ? (
-          <Link url={url} target="_blank">
-            {draftName || "View draft order"}
-          </Link>
-        ) : (
-          <Text variant="bodySm" as="span">{draftName || "—"}</Text>
-        )}
+        <Pair gap={pairGap} blockAlign="center">
+          <Badge tone="info">Draft Created</Badge>
+          {url ? (
+            <Link url={url} target="_blank">
+              {draftName || "View draft order"}
+            </Link>
+          ) : (
+            <Text variant="bodySm" as="span">{draftName || "—"}</Text>
+          )}
+        </Pair>
         {/* An address field that could not be mapped is fixable in seconds if
             someone is told, and invisible if they are not. */}
         {result?.ok && result.warnings?.length ? (

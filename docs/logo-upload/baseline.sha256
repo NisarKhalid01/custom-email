@@ -28,7 +28,7 @@ fa39f7be4c34f8cf81d3664b6f034e54f901e59cbee21b12c792287d444e0180  APP:app/routes
 # import, `export const action = deleteSubmissionAction`, and an InlineStack around the
 # existing View button — see TASKS.md §5.4. Frozen again from here.
 875c5e6e32b45b29e614c018f7237d419d040784bb8ff3ad2dcaa831686311bd  APP:app/routes/app._index.jsx
-5aa4fc98f1a6648c688f1dbe43da897cb703c94ce98d22478900c7f4d8487231  APP:app/routes/app.submissions.$id.jsx
+139c48333269af8f09b018742687bd1b53761ecfe748168da56da73cfae0e70f  APP:app/routes/app.submissions.$id.jsx
 
 # --- APP: shared libs the new code IMPORTS but must never EDIT ---
 86115680a01edf9435e1ccf5547fc998fb42168c37ed76b924c7ab66b64b3bd7  APP:app/lib/shopify-files.server.js
