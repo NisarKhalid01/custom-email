@@ -23,21 +23,29 @@ import { useEffect, useMemo, useState } from "react";
 import { listFormSubmissions } from "../lib/supabase.server";
 import { deleteSubmissionAction } from "../features/logo-upload/server/delete-actions.server.js";
 import DeleteRowAction from "../features/logo-upload/ui/DeleteRowAction.jsx";
+import DraftOrderAction from "../features/product-request/ui/DraftOrderAction.jsx";
+import { FORM_TYPE as PRODUCT_REQUEST_FORM_TYPE } from "../features/product-request/config/fields.js";
 
 // Deleting one submission — the attachment, then the row. Implemented in the
 // feature folder so this live page only gains an import and this line.
+//
+// The draft-order button does NOT go through this action: it posts to its own
+// route (/app/product-request/draft-order), so this line stays as it is.
 export const action = deleteSubmissionAction;
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
+  // logo-mat-central.myshopify.com -> logo-mat-central, for admin deep links to
+  // draft orders and orders. Same derivation as app.submissions.$id.jsx.
+  const storeHandle = (session.shop || "").replace(/\.myshopify\.com$/, "");
 
   try {
     // Scoped to the authenticated store only.
     const submissions = await listFormSubmissions(session.shop);
-    return json({ submissions, error: null });
+    return json({ submissions, storeHandle, error: null });
   } catch (err) {
     console.error("Failed to load form submissions:", err);
-    return json({ submissions: [], error: err.message });
+    return json({ submissions: [], storeHandle, error: err.message });
   }
 };
 
@@ -65,7 +73,7 @@ function formatDate(value) {
 }
 
 export default function Index() {
-  const { submissions, error } = useLoaderData();
+  const { submissions, storeHandle, error } = useLoaderData();
   const navigate = useNavigate();
   const navigation = useNavigation();
   // Which submission's detail page is currently loading (to spin its View button).
@@ -175,6 +183,23 @@ export default function Index() {
         </IndexTable.Cell>
         <IndexTable.Cell>{formatDate(item.created_at)}</IndexTable.Cell>
         <IndexTable.Cell>
+          {/* Only the Product Request form records a priced variant, so only it
+              can raise a draft order. The two legacy forms render exactly as
+              they always have. */}
+          {item.form_type === PRODUCT_REQUEST_FORM_TYPE ? (
+            <DraftOrderAction
+              id={item.id}
+              storeHandle={storeHandle}
+              draftOrderId={item.draft_order_id}
+              draftOrderName={item.draft_order_name}
+              orderId={item.order_id}
+              orderName={item.order_name}
+            />
+          ) : (
+            "—"
+          )}
+        </IndexTable.Cell>
+        <IndexTable.Cell>
           <InlineStack gap="100" wrap={false} blockAlign="center">
             <Tooltip content="View submission">
               <Button
@@ -265,6 +290,7 @@ export default function Index() {
             { title: "Attachment" },
             { title: "Status" },
             { title: "Submitted" },
+            { title: "Draft order" },
             { title: "Actions" },
           ]}
           pagination={

@@ -10,7 +10,7 @@
 | **0** — scopes | ✅ granted in the Dev Dashboard (2026-09-15) · ⏳ 0.3 merchant re-approval + 0.4 verify |
 | **1** — data layer | ✅ **done 2026-09-15** — migration applied, 13/13 checks pass |
 | **2** — draft order creation | ✅ **built 2026-09-15**, 28/28 logic checks · ⚠️ untestable until 0.3 lands |
-| **3** — admin UI | 🔨 in progress |
+| **3** — admin UI | ✅ **built 2026-09-15** · untested in the browser |
 | **4** — completion tracking | ⬜ not started |
 | **5** — email | ⬜ waiting on requirements |
 
@@ -321,7 +321,21 @@ of 2 or more.
 
 ---
 
-## Phase 3 — Admin UI
+## Phase 3 — Admin UI ✅ BUILT (2026-09-15)
+
+**Landed:** `ui/DraftOrderAction.jsx` (new) plus a frozen edit to
+`app/routes/app._index.jsx` — loader now returns `storeHandle`, a "Draft order"
+column was added, and the cell renders the action only for `request_quote_new`.
+The two legacy forms show "—" and are otherwise untouched. Baseline re-blessed
+`5c49aeda…` -> `4b17145a…`; all 16 frozen hashes pass.
+
+The button posts to its OWN route, so `export const action = deleteSubmissionAction`
+in that frozen file is unchanged.
+
+**Untested in a browser.** It cannot show anything but the button today: no row
+has a `draft_order_id`, and creating one needs the scopes.
+
+
 
 - **3.1** New `app/features/product-request/ui/DraftOrderAction.jsx`, modelled on
   `DeleteRowAction.jsx`: own `useFetcher`, own busy state, own error display,
