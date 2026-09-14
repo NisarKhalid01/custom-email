@@ -14,12 +14,23 @@ automatically_update_urls_on_dev = true
 api_version = "2025-04"
 
 [access_scopes]
-# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-# The app only ever touches Shopify Files (stagedUploadsCreate / fileCreate for
-# the logo-upload widget and the quote-form attachment). No product, content,
-# order or customer APIs are used, so those scopes were removed.
-# write_files implies read_files, but both are listed for clarity.
-scopes = "read_files,write_files"
+# ⚠️ NOT the live config. Scopes are set in the Dev Dashboard on app 21daae00…
+#    (= .env SHOPIFY_API_KEY). Applied there 2026-09-15. Dashboard wins; keep in
+#    step by hand. This file's client_id 7cc30be0… is a DIFFERENT app, in another
+#    org — `shopify app deploy` 403s, and repointing client_id would overwrite
+#    the live app's name/handle/redirect_urls (handle is `image-upload-new`).
+#    Background: HANDOVER-eps-upload.md §6, TASKS.md B3.
+#
+# write_* implies read_*; both listed for clarity.
+#   files              — stagedUploadsCreate / fileCreate / fileDelete (uploads)
+#   draft_orders       — raise a draft from a submission, read its status
+#   read_orders        — completed order name for the admin badge + link.
+#                        write_orders NOT wanted: staff complete drafts in admin.
+#                        Capped to the last 60 days without read_all_orders.
+#   read_products      — verify a submitted variant gid belongs to its product
+#   products/content   — pre-existing, unused by this repo; kept only because
+#                        dropping a scope costs another merchant re-approval
+scopes = "read_files,write_files,write_products,read_products,read_content,write_content,write_draft_orders,read_draft_orders,read_orders"
 
 [auth]
 redirect_urls = [

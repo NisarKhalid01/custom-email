@@ -128,3 +128,126 @@ export async function setEmailStatus(id, status) {
     where id = ${id}
   `;
 }
+
+/* ------------------------------------------------------------ draft orders */
+
+/**
+ * Read one submission for the draft-order flow.
+ *
+ * SHOP-SCOPED, unlike the reads above. This one takes an id straight from a
+ * button in the admin UI, so it is user-supplied: without the shop predicate one
+ * store could raise a draft order against another store's submission by
+ * guessing a uuid. Same rule as `getSubmissionForDelete`.
+ *
+ * Returns null when not found, when the id is malformed, or when it belongs to
+ * another shop — the caller cannot tell those apart, which is the point.
+ *
+ * @returns {Promise<object|null>}
+ */
+export async function getSubmissionForDraft(id, shop) {
+  if (!id || !shop) return null;
+  const sql = getSql();
+  try {
+    const [row] = await sql`
+      select id, shop, form_type, email, name, phone, company,
+             product_title, customer_gid, customer_email,
+             draft_order_id, draft_order_name, order_id, order_name,
+             payload
+      from ${sql(FORM_SUBMISSIONS_TABLE)}
+      where id = ${id} and shop = ${shop}
+      limit 1
+    `;
+    return row ?? null;
+  } catch (err) {
+    // A malformed uuid is Postgres 22P02, not a server fault — treat it as "not
+    // found" rather than letting it 500 the admin page.
+    console.error(
+      "[product-request] getSubmissionForDraft failed:",
+      err?.message ?? err,
+    );
+    return null;
+  }
+}
+
+/**
+ * Attach a newly created draft order to a submission.
+ *
+ * ---------------------------------------------------------------------------
+ * THIS IS THE IDEMPOTENCY GUARD — read before changing the WHERE clause
+ * ---------------------------------------------------------------------------
+ * `and draft_order_id is null` is what stops a double-clicked button attaching
+ * a second draft order over the first. The route also checks the column BEFORE
+ * calling Shopify; this is the check that actually holds, because the Shopify
+ * mutation and this write are not in one transaction and two requests can
+ * interleave between them.
+ *
+ * Returns false when it changed nothing, which means a draft order already
+ * existed. The caller MUST treat that as "you have just created an orphan in
+ * Shopify" and log the new gid — it is real, it is not recorded here, and the
+ * logs are the only way back to it.
+ *
+ * @returns {Promise<boolean>} true if this call is the one that attached it.
+ */
+export async function attachDraftOrder(id, { draftOrderId, draftOrderName }) {
+  if (!id || !draftOrderId) return false;
+  const sql = getSql();
+  const rows = await sql`
+    update ${sql(FORM_SUBMISSIONS_TABLE)}
+    set draft_order_id = ${draftOrderId},
+        draft_order_name = ${draftOrderName ?? null},
+        draft_order_created_at = now()
+    where id = ${id} and draft_order_id is null
+    returning id
+  `;
+  return rows.length > 0;
+}
+
+/**
+ * Attach the order a draft was completed into.
+ *
+ * Written by the Phase 4 status sweep, not by a user action, so it is keyed on
+ * the draft rather than on a submission id: the sweep knows which draft order
+ * now has an order, and one draft belongs to exactly one submission.
+ *
+ * `and order_id is null` keeps it write-once for the same reason as above — and
+ * because the sweep re-runs on every list load, so without it every page view
+ * would rewrite the same value.
+ *
+ * @returns {Promise<boolean>} true if this call is the one that attached it.
+ */
+export async function attachOrder(draftOrderId, { orderId, orderName }) {
+  if (!draftOrderId || !orderId) return false;
+  const sql = getSql();
+  const rows = await sql`
+    update ${sql(FORM_SUBMISSIONS_TABLE)}
+    set order_id = ${orderId},
+        order_name = ${orderName ?? null}
+    where draft_order_id = ${draftOrderId} and order_id is null
+    returning id
+  `;
+  return rows.length > 0;
+}
+
+/**
+ * The open drafts on a page of submissions: raised, but not yet completed.
+ *
+ * Phase 4 feeds these gids to one batched Shopify lookup. Shop-scoped, and
+ * capped: the admin list pages at 20, so a caller asking for hundreds is a bug
+ * rather than a big store.
+ *
+ * @returns {Promise<string[]>} draft order gids
+ */
+export async function listOpenDraftOrderIds(shop, limit = 50) {
+  if (!shop) return [];
+  const sql = getSql();
+  const rows = await sql`
+    select draft_order_id
+    from ${sql(FORM_SUBMISSIONS_TABLE)}
+    where shop = ${shop}
+      and draft_order_id is not null
+      and order_id is null
+    order by draft_order_created_at desc nulls last
+    limit ${limit}
+  `;
+  return rows.map((r) => r.draft_order_id);
+}

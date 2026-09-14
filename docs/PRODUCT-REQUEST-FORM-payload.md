@@ -1,6 +1,6 @@
 # Product Request Form — payload contract
 
-**Written:** 2026-09-09 · **Last updated:** 2026-09-09 (see Change log below)
+**Written:** 2026-09-09 · **Last updated:** 2026-09-14 (see Change log below)
 **Route:** `app/routes/api.product-request.jsx` — exists, in progress.
 **Form lives in:** theme repo `logo-mat`, `snippets/product-request-form.liquid`
 (+ `snippets/product-request-form-field.liquid`, which draws one input).
@@ -14,6 +14,20 @@ eventually replace both on every product page:
 | Free Quote (`#shipping-form2`) | `custom-logo-form.liquid` | `api.save-shipping.jsx` (multipart) |
 
 Both legacy forms keep working untouched. Nothing here changes them.
+
+---
+
+## Change log — 2026-09-14
+
+**The form now submits a real variant.** Four new fields — `variant_gid`,
+`variant_base_gid`, `variant_price`, `variant_product_id` — see *The resolved
+variant*. `variant_id` is untouched and still holds the size title.
+
+Two earlier statements in this doc are now **stale**: the client is no longer a
+stub (there is no `PRF_SUBMIT_STUB`; the form posts to
+`/api/product-request` and calls `prfMarkSubmitted()` / `prfClearDraft()` on
+success), and the size dropdown is no longer deduped by title — deduping is what
+destroyed variant identity in the first place.
 
 ---
 
@@ -94,7 +108,11 @@ submissions apart from the two legacy forms if they share a table.
 | `state` | **may be absent.** Hidden and un-required for countries with no subregions |
 | `mat_type` | hidden input, product title |
 | `quantity` | number. `min`/`max` attributes are rendered from `special_requirements` / `maximum_order`, but they are **advisory only** — the form is `novalidate` and its `validate()` checks emptiness, not bounds. **Validate the range server-side.** |
-| `variant_id` | size, as a variant **title** string, not an id — same as both legacy forms |
+| `variant_id` | size, as a variant **title** string, not an id — same as both legacy forms. **Unchanged, deliberately:** the admin and the email show it as "Size", so renaming it would break every stored row. It is now a hidden input written by JS rather than the select's own value — see *The resolved variant* |
+| `variant_gid` | `gid://shopify/ProductVariant/…` — **the real identifier.** Tier-applied. Put this on the draft order |
+| `variant_base_gid` | the pre-tier variant gid, for audit. This one is the size `<select>` itself |
+| `variant_price` | that variant's unit price in **cents** (integer). Audit only — see below |
+| `variant_product_id` | the linked product that owns the variant |
 | `loading_dock`, `liftgate` | `"Yes"` / `"No"`, default `"No"` |
 | `comments` | may be empty |
 
@@ -149,6 +167,82 @@ Size: capped client-side at **4,404,019 bytes (~4.2 MB)**; the form's own hint
 rounds this to "4 MB" for shoppers. Vercel rejects request bodies over ~4.5 MB
 at the edge, which is where that number comes from. The client cap is a
 courtesy — re-check the size server-side.
+
+---
+
+## The resolved variant
+
+Added 2026-09-14. The custom / placeholder line item approach is **dropped**:
+the form now resolves and submits the same variant the PDP would have added to
+cart, so the submission can be turned into a proper Shopify draft order.
+
+Three inputs decide one variant, exactly as on the PDP
+(`sections/custom-products-main-free-quote-multi-color.liquid:1199-1240` plus
+`assets/nws-custom.js:511-545` and `:643-684`):
+
+1. **Colour count** (`variation_option`) chooses **which linked product**. Every
+   size option is tagged `data-set="m<normalised variation_value>"`, and the
+   form shows only the sizes whose tag matches.
+2. **Size** picks the variant within that product.
+3. **Quantity** swaps to a **sibling variant** through the `price_for_2` /
+   `_3` / `_11` / `_26` metafields — each is a *variant reference*, so buying at
+   that quantity changes the variant id, not just the price. The highest
+   qualifying tier wins. Suppressed entirely when
+   `custom.quantity_discount_on_off` is `false`.
+
+What the route should do with the result:
+
+- **Build the draft order from `variant_gid`.** Pass it and let Shopify price
+  the line. Do **not** price from `variant_price` — a quote is answered days
+  later and prices move in between. `variant_price` exists so the quote can be
+  audited against what the shopper was shown at the time.
+- **`variant_gid` is never guessed.** If the form cannot resolve one it submits
+  an empty string, and its own validation blocks the submit before that happens.
+  Treat an empty `variant_gid` alongside a non-empty `variant_id` as a bug worth
+  logging, not as something to paper over.
+- **`variant_id` is still a title and is still what to display.** Do not parse
+  an id out of it.
+- **`variant_product_id`** records which of the linked products the variant came
+  from. Without it there is nothing in the row saying which colour count was
+  priced.
+
+Client-side notes that matter server-side: the resolution runs on every change
+of colour count, size and quantity. Changing the colour count carries the same
+size across to the newly chosen product where that size exists, and **clears**
+it where it does not — either way the variant is re-resolved, never left stale.
+None of that is a guarantee: re-check that the gid exists and belongs to the
+expected product before creating the draft order.
+
+### Storage — already working, nothing to add
+
+All four fields are persisted with **no route change**. `toPayload()` builds the
+payload from *every* key in the multipart body and `insertSubmission()` stores it
+whole in the `payload` jsonb column, so new form fields land in the database the
+moment the theme starts sending them. Confirm with:
+
+```sql
+select payload->>'variant_gid', payload->>'variant_price'
+from form_submissions
+where form_type = 'request_quote_new';
+```
+
+**If the draft-order work wants to filter or sort on the variant**, promote them
+to real columns — a migration plus three lines in `insertSubmission()`. `jsonb`
+is queryable but unindexed, and `draft_order_id` / `order_id` are getting
+columns anyway (see `PLAN-draft-orders.md`).
+
+### How they display
+
+`config/fields.js` was updated alongside the form:
+
+- `variation_option` now sits **before** `variant_id`, mirroring the form.
+- `variant_price` shows as **"Unit price at request"**, formatted from cents by
+  `formatValue(value, key)` — note the second argument, which is new.
+- `variant_gid`, `variant_base_gid` and `variant_product_id` are in
+  `HIDDEN_KEYS`: **stored but not printed.** Three lines of
+  `gid://shopify/ProductVariant/44…` tell a salesperson nothing that Size and the
+  colour count do not. Read them from `payload` — that is how the draft-order
+  action should get them, not from the rendered rows.
 
 ---
 

@@ -40,8 +40,13 @@ export const SECTIONS = [
       "mat_type",
       "quantity",
       "background_color",
-      "variant_id",
+      // The colour count comes BEFORE the size, in the form and here: it
+      // chooses which linked product, and the size list is filtered down to
+      // that product. Reading them the other way round makes the size look
+      // unqualified.
       "variation_option",
+      "variant_id",
+      "variant_price",
       "logo_orientation",
       "logo_colors",
       "logo_edging",
@@ -96,6 +101,14 @@ export const HIDDEN_KEYS = new Set([
   "product_id",
   "shop",
   "attachment",
+  // Machine identifiers for the resolved variant. STORED but not shown: they
+  // are what the draft order is built from, and three lines of
+  // "gid://shopify/ProductVariant/44…" in a sales email tell a human nothing.
+  // What a human needs from them is already on the row as Size, the colour
+  // count and the unit price. Read them from `payload` if you need them.
+  "variant_gid",
+  "variant_base_gid",
+  "variant_product_id",
   "customer_gid",
   "customer_email",
   "customer_sig",
@@ -110,6 +123,7 @@ const LABELS = {
   zip: "ZIP / Postal Code",
   mat_type: "Type of Mat",
   variant_id: "Size",
+  variant_price: "Unit price at request",
   logo_colors: "Color Options",
   background_color: "Base Mate Color",
   coin_quantity: "Coin Quantity",
@@ -124,9 +138,33 @@ export function isBlank(value) {
   return String(value).trim() === "";
 }
 
-/** `logo_colors` is an array; join it rather than letting String() give "A,B". */
-export function formatValue(value) {
-  return Array.isArray(value) ? value.join(", ") : String(value ?? "");
+/**
+ * Cents to money. Anything that is not a whole number of cents comes back
+ * untouched, so a bad value shows as itself rather than as "$NaN".
+ *
+ * USD symbol, matching the storefront this app serves. If a second currency is
+ * ever added, the form would need to send one alongside the price -- the
+ * payload carries no currency today.
+ */
+function formatCents(value) {
+  const cents = parseInt(value, 10);
+  if (!Number.isFinite(cents) || String(value).trim() === "") {
+    return String(value ?? "");
+  }
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+/**
+ * `logo_colors` is an array; join it rather than letting String() give "A,B".
+ *
+ * `variant_price` is an INTEGER NUMBER OF CENTS. That is what Liquid hands the
+ * form and what gets stored, and storing it that way is right -- but printing
+ * "9900" at a salesperson is not, hence the one key-specific case.
+ */
+export function formatValue(value, key) {
+  if (Array.isArray(value)) return value.join(", ");
+  if (key === "variant_price") return formatCents(value);
+  return String(value ?? "");
 }
 
 /**
@@ -164,7 +202,7 @@ export function groupPayload(payload) {
   const toRow = (key) => ({
     key,
     label: labelFor(key, data[key]),
-    value: formatValue(data[key]),
+    value: formatValue(data[key], key),
   });
 
   for (const [heading, keys] of SECTIONS) {
