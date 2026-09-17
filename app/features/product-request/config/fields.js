@@ -38,16 +38,19 @@ export const SECTIONS = [
     "Product Details",
     [
       "mat_type",
-      "quantity",
-      "background_color",
-      // The colour count comes BEFORE the size, in the form and here: it
-      // chooses which linked product, and the size list is filtered down to
-      // that product. Reading them the other way round makes the size look
-      // unqualified.
-      "variation_option",
       "variant_id",
+      // Deliberately NOT where the storefront puts it. The form shows the price
+      // in a summary block far lower down, next to Delivery Requirements,
+      // because it has to sit under everything that can change it. In a text
+      // listing there is no such constraint and the price belongs with the size
+      // it prices.
       "variant_price",
+      "quantity",
       "logo_orientation",
+      "background_color",
+      // Logo Colors then Color Options, both revealed by Base Mate Color above
+      // them — the storefront gates them on it, mirroring the PDP.
+      "variation_option",
       "logo_colors",
       "logo_edging",
       "logo_corners",
@@ -124,7 +127,10 @@ const LABELS = {
   mat_type: "Type of Mat",
   variant_id: "Size",
   variant_price: "Unit price at request",
-  logo_colors: "Color Options",
+  // "Logo Color Options" on the storefront since 2026-09-16. Kept identical
+  // here on purpose: a quote must read the same in the shopper's form, the
+  // sales email and the admin, which is the whole reason this map exists.
+  logo_colors: "Logo Color Options",
   background_color: "Base Mate Color",
   coin_quantity: "Coin Quantity",
   loading_dock: "Loading Dock",

@@ -26,8 +26,19 @@ fa39f7be4c34f8cf81d3664b6f034e54f901e59cbee21b12c792287d444e0180  APP:app/routes
 # --- APP: existing admin pages ---
 # app._index.jsx re-captured 2026-08-25 for A17 (admin row delete). Its only edit is an
 # import, `export const action = deleteSubmissionAction`, and an InlineStack around the
-# existing View button — see TASKS.md §5.4. Frozen again from here.
-875c5e6e32b45b29e614c018f7237d419d040784bb8ff3ad2dcaa831686311bd  APP:app/routes/app._index.jsx
+# existing View button — see TASKS.md §5.4.
+#
+# RE-CAPTURED 2026-09-17 for the submissions export (docs/PLAN-export-submissions.md
+# Phase 3.5). Six added lines, nothing removed or changed: one import of
+# features/export/submissions/ui/ExportButton.jsx, and that element plus its comment
+# placed in the existing filter InlineStack beside the form Select.
+#
+# The loader, the action, the table and every cell are untouched. The export reads from
+# its OWN GET route (/app/export/submissions), so `export const action =
+# deleteSubmissionAction` is unaffected — the same separation the draft-order button uses.
+# Previous hash: 875c5e6e32b45b29e614c018f7237d419d040784bb8ff3ad2dcaa831686311bd
+# Frozen again from here.
+f1772945820954eea708dbbc94ba88f2435240b8cea850082d56b081dba0e08a  APP:app/routes/app._index.jsx
 139c48333269af8f09b018742687bd1b53761ecfe748168da56da73cfae0e70f  APP:app/routes/app.submissions.$id.jsx
 
 # --- APP: shared libs the new code IMPORTS but must never EDIT ---

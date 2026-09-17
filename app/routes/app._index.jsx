@@ -24,6 +24,7 @@ import { listFormSubmissions } from "../lib/supabase.server";
 import { deleteSubmissionAction } from "../features/logo-upload/server/delete-actions.server.js";
 import DeleteRowAction from "../features/logo-upload/ui/DeleteRowAction.jsx";
 import DraftOrderAction from "../features/product-request/ui/DraftOrderAction.jsx";
+import ExportButton from "../features/export/submissions/ui/ExportButton.jsx";
 import { FORM_TYPE as PRODUCT_REQUEST_FORM_TYPE } from "../features/product-request/config/fields.js";
 import { syncDraftOrderStatuses } from "../features/product-request/server/status-sync.server.js";
 
@@ -281,6 +282,11 @@ export default function Index() {
                 onChange={setFormType}
               />
             </Box>
+            {/* Exports what the filters above currently show, in CSV or Excel.
+                Self-contained: the component owns the format chooser, the
+                download and its own errors, and reads from its own GET route —
+                so `export const action` above is unaffected. */}
+            <ExportButton form={formType} q={search} count={filtered.length} />
           </InlineStack>
         </Box>
         <IndexTable
