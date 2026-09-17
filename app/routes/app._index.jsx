@@ -284,9 +284,16 @@ export default function Index() {
             </Box>
             {/* Exports what the filters above currently show, in CSV or Excel.
                 Self-contained: the component owns the format chooser, the
-                download and its own errors, and reads from its own GET route —
-                so `export const action` above is unaffected. */}
-            <ExportButton form={formType} q={search} count={filtered.length} />
+                scope choice, the download and its own errors, and reads from
+                its own GET route — so `export const action` above is
+                unaffected. `pageIds` is what lets it export exactly the rows on
+                screen rather than re-deriving them from a page number. */}
+            <ExportButton
+              form={formType}
+              q={search}
+              count={filtered.length}
+              pageIds={paged.map((item) => String(item.id))}
+            />
           </InlineStack>
         </Box>
         <IndexTable

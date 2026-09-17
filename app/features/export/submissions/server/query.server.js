@@ -26,6 +26,17 @@ import { getSql, FORM_SUBMISSIONS_TABLE } from "./db.server.js";
 export const MAX_EXPORT_ROWS = 10000;
 
 /**
+ * Most rows one "this page" export may name explicitly.
+ *
+ * The list pages at 20. This is generous headroom for a future page size, and it
+ * keeps a hand-built URL from turning into an unbounded `id = any(...)`.
+ */
+const MAX_EXPLICIT_IDS = 200;
+
+/** The `id` column is a uuid; anything else would make Postgres raise 22P02. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
  * Escape a user's search term for LIKE.
  *
  * Not a SQL-injection concern — the term is a bound parameter either way. This
@@ -48,19 +59,49 @@ function likePattern(term) {
  * and listing columns here as well would mean a column added to the table in
  * future is silently blank in the export until someone remembers this file too.
  *
+ * ---------------------------------------------------------------------------
+ * `ids` — EXPORTING EXACTLY WHAT IS ON SCREEN
+ * ---------------------------------------------------------------------------
+ * When the merchant exports "this page", the page tells us WHICH rows it is
+ * showing rather than us re-deriving them from a page number. The alternative —
+ * `offset (page - 1) * 20` — only agrees with the screen for as long as this
+ * query's ordering, filtering and page size all stay in step with the client's,
+ * and the day one of them changes, the file quietly stops matching what the
+ * merchant was looking at. Naming the rows cannot drift.
+ *
+ * Still shop-scoped: an id belonging to another store matches nothing, so the
+ * parameter grants no access it should not have.
+ *
  * @param {string} shop                 `session.shop`
  * @param {object} [options]
  * @param {string} [options.formType]   a form_type, or "all"
  * @param {string} [options.search]     the UI's search term
+ * @param {string[]} [options.ids]      export exactly these rows (the page in view)
  * @returns {Promise<{rows: object[], truncated: boolean}>}
  */
-export async function listForExport(shop, { formType = "all", search = "" } = {}) {
+export async function listForExport(
+  shop,
+  { formType = "all", search = "", ids = null } = {},
+) {
   if (!shop) return { rows: [], truncated: false };
 
   const sql = getSql();
   const term = String(search ?? "").trim();
   const scoped = formType && formType !== "all";
   const pattern = likePattern(term);
+
+  // Malformed ids are dropped rather than passed to Postgres, which would raise
+  // 22P02 and turn a bad URL into a 500.
+  const explicitIds = Array.isArray(ids)
+    ? [...new Set(ids.filter((id) => UUID.test(String(id))))].slice(0, MAX_EXPLICIT_IDS)
+    : null;
+
+  // An `ids` list that survived validation as empty means "export these zero
+  // rows", not "export everything" — the difference between an empty file and
+  // accidentally dumping the table.
+  if (explicitIds && explicitIds.length === 0) {
+    return { rows: [], truncated: false };
+  }
 
   // The same six fields the page's search box matches on. Written out rather
   // than generated from a list: a bound parameter per column is what keeps this
@@ -82,6 +123,7 @@ export async function listForExport(shop, { formType = "all", search = "" } = {}
     select *
     from ${sql(FORM_SUBMISSIONS_TABLE)}
     where shop = ${shop}
+    ${explicitIds ? sql`and id = any(${explicitIds}::uuid[])` : sql``}
     ${scoped ? sql`and form_type = ${formType}` : sql``}
     ${matchesSearch}
     order by created_at desc

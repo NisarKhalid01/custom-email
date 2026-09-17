@@ -10,7 +10,24 @@ import { fetchOrderStatuses } from "../features/export/submissions/server/order-
 /**
  * Download the Form Submissions export. Loader only — no UI, no action.
  *
- * GET /app/export/submissions?form=<form_type|all>&q=<search>&format=<csv|xlsx>
+ * GET /app/export/submissions
+ *       ?form=<form_type|all>    the page's form filter — ALWAYS applied
+ *       &q=<search>              the page's search box
+ *       &format=<csv|xlsx>
+ *       &ids=<uuid,uuid,…>       export exactly these rows (the page in view)
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT GETS EXPORTED
+ * ---------------------------------------------------------------------------
+ * Three scopes, and the merchant chooses between them on the page rather than
+ * here — this route just honours what it is told:
+ *
+ *   search typed      -> every row matching it, across all pages
+ *   no search         -> `ids`, i.e. exactly the rows on screen
+ *   "all records"     -> no `ids`, so everything the filter allows
+ *
+ * The form filter applies in every case. Someone looking at Quote Requests must
+ * never find Shipping Info rows in their file.
  *
  * ---------------------------------------------------------------------------
  * WHY THIS URL
@@ -38,8 +55,20 @@ export const loader = async ({ request }) => {
   // Allowlisted, never sanitised — it reaches a filename and a Content-Type.
   const format = resolveFormat(url.searchParams.get("format"));
 
+  const rawIds = url.searchParams.get("ids");
+  // An `ids` parameter that is present but empty means "these zero rows", so it
+  // must stay an empty array rather than collapsing to null and exporting the
+  // whole table. Validation of the ids themselves happens in the query.
+  const ids = rawIds === null ? null : rawIds.split(",").filter(Boolean);
+
+  const scope = search ? "search" : ids ? "page" : "all";
+
   try {
-    const { rows, truncated } = await listForExport(session.shop, { formType, search });
+    const { rows, truncated } = await listForExport(session.shop, {
+      formType,
+      search,
+      ids,
+    });
 
     // Best effort, by contract: this returns {} rather than throwing, so a
     // Shopify outage costs two columns and never the download. Makes no call at
@@ -49,6 +78,7 @@ export const loader = async ({ request }) => {
     const { filename, contentType, body, rowCount } = await buildExport(rows, {
       formType,
       format,
+      scope,
       orderStatuses,
     });
 

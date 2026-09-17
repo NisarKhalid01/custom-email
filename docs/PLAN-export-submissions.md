@@ -396,12 +396,43 @@ guards** — but it does need every cell written as an explicit string type (1.1
 or the library will helpfully turn `#D1361` and a leading-zero ZIP into something
 else.
 
-### D10. The export honours the page's filters ✅
+### D10. Three export scopes — revised 2026-09-17 ✅
 
 The button passes the current `form` (the `Select`) and `q` (the search box) as
 query params; the route re-applies them **server-side** over the same fields the
-UI searches. The label states what will happen — `Export 71 submissions` — so
-nobody downloads a filtered file thinking it is everything.
+UI searches. **The form filter applies in every case** — someone looking at
+Quote Requests must never find Shipping Info rows in their file.
+
+What gets exported is then one of three things:
+
+| Situation | Scope | Why |
+|---|---|---|
+| Search typed | every matching row, all pages | The search *is* the selection; exporting part of it would surprise |
+| No search | **the rows on screen** | The default is not "everything" — see below |
+| No search, "Export all records" ticked | everything the filter allows | The deliberate choice |
+
+**Why the default is the page and not the whole table.** Exporting 75 customers'
+names, emails, phone numbers and artwork links is a different act from exporting
+the twenty someone is looking at, and the difference should be a decision rather
+than an accident. The checkbox carries the real number — `Export all 75 records`
+— so there is nothing to infer, and the button label always states exactly what
+is about to happen.
+
+**"This page" means the rows on screen, named explicitly.** The button sends
+`ids=<uuid,…>`. The alternative — `offset (page - 1) * 20` — only agrees with the
+screen while this query's ordering, filtering and page size stay in step with the
+client's, and the day one of them changes the file quietly stops matching what
+the merchant was looking at. Shop-scoping still applies, so an id from another
+store matches nothing.
+
+**A partial export says so in its filename** — `…-page-2026-09-17.csv`,
+`…-search-2026-09-17.csv`, versus plain `…-2026-09-17.csv` for the full one.
+Three files in a Downloads folder a fortnight later, and nothing else
+distinguishes "what I was looking at" from "the whole table".
+
+Two cases deliberately collapse: when every matching row already fits on one
+page, the checkbox is hidden (both choices would produce the same file), and a
+search never offers it.
 
 Date range is deferred to Phase 6. At 75 rows it buys nothing.
 

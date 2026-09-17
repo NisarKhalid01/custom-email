@@ -36,9 +36,12 @@ fa39f7be4c34f8cf81d3664b6f034e54f901e59cbee21b12c792287d444e0180  APP:app/routes
 # The loader, the action, the table and every cell are untouched. The export reads from
 # its OWN GET route (/app/export/submissions), so `export const action =
 # deleteSubmissionAction` is unaffected — the same separation the draft-order button uses.
-# Previous hash: 875c5e6e32b45b29e614c018f7237d419d040784bb8ff3ad2dcaa831686311bd
+# Re-captured again the same day when the export gained a scope choice: the element
+# now also receives `pageIds`, the ids of the rows currently rendered, so "export this
+# page" means exactly what is on screen. Still additive — no existing line changed.
+# Previous hashes: 875c5e6e… (pre-export), f1772945… (export button, first form).
 # Frozen again from here.
-f1772945820954eea708dbbc94ba88f2435240b8cea850082d56b081dba0e08a  APP:app/routes/app._index.jsx
+e2cce81bbf1ab49023e55ab48f26970ebaaad7e586a1541f4a335606cd9e0220  APP:app/routes/app._index.jsx
 139c48333269af8f09b018742687bd1b53761ecfe748168da56da73cfae0e70f  APP:app/routes/app.submissions.$id.jsx
 
 # --- APP: shared libs the new code IMPORTS but must never EDIT ---

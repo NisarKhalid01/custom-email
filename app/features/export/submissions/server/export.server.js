@@ -56,13 +56,20 @@ function sheetName(formType) {
  * @param {object}   options
  * @param {string}   options.formType       a form_type, or "all"
  * @param {string}   options.format         "csv" | "xlsx" (already resolved)
+ * @param {string}   [options.scope]        "page" | "search" | "all" — filename only
  * @param {object}   [options.orderStatuses] from fetchOrderStatuses(); may be {}
  * @param {Date}     [options.now]          injectable, so the filename is testable
  * @returns {Promise<{filename: string, contentType: string, body: string|Buffer, rowCount: number}>}
  */
 export async function buildExport(
   rows,
-  { formType = "all", format = DEFAULT_FORMAT, orderStatuses = {}, now = new Date() } = {},
+  {
+    formType = "all",
+    format = DEFAULT_FORMAT,
+    scope = "all",
+    orderStatuses = {},
+    now = new Date(),
+  } = {},
 ) {
   const columns = columnsFor(formType);
   const headers = headersFor(columns);
@@ -73,7 +80,12 @@ export async function buildExport(
   // Dated, so two downloads in one day do not silently overwrite each other in
   // the Downloads folder.
   const date = now.toISOString().slice(0, 10);
-  const filename = `form-submissions-${formSlug(formType)}-${date}.${chosen.extension}`;
+  // A partial export SAYS SO in its own name. Three files in a Downloads folder
+  // a fortnight later, and nothing else distinguishes "the page I was looking
+  // at" from "the whole table" — which is how a partial export ends up being
+  // treated as a complete record.
+  const scopeSlug = scope === "all" ? "" : `-${scope}`;
+  const filename = `form-submissions-${formSlug(formType)}${scopeSlug}-${date}.${chosen.extension}`;
 
   const body =
     format === "xlsx"

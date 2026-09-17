@@ -83,6 +83,39 @@ if (term) {
 const wildcard = await listForExport(SHOP, { search: "%" });
 ok("a bare % is a literal, not a wildcard matching everything", wildcard.rows.length < all.rows.length, `got ${wildcard.rows.length} of ${all.rows.length}`);
 
+/* ------------------------------------------------------- the three scopes */
+
+console.log("\nScopes — page / search / all");
+
+// "This page" = the first 20 rows the UI would render, named explicitly.
+const pageIds = all.rows.slice(0, 20).map((r) => String(r.id));
+const page = await listForExport(SHOP, { ids: pageIds });
+ok("exporting a page returns exactly those rows", page.rows.length === pageIds.length, `got ${page.rows.length}`);
+ok("and only those rows", page.rows.every((r) => pageIds.includes(String(r.id))));
+
+const pageFiltered = await listForExport(SHOP, { ids: pageIds, formType: "request_quote" });
+ok(
+  "the form filter still applies to a page export",
+  pageFiltered.rows.every((r) => r.form_type === "request_quote") && pageFiltered.rows.length <= page.rows.length,
+  `got ${pageFiltered.rows.length}`,
+);
+
+const emptyIds = await listForExport(SHOP, { ids: [] });
+ok("an empty id list exports nothing — it does NOT fall back to everything", emptyIds.rows.length === 0, `got ${emptyIds.rows.length}`);
+
+const badIds = await listForExport(SHOP, { ids: ["not-a-uuid", "'; drop table --"] });
+ok("malformed ids are dropped without raising 22P02", badIds.rows.length === 0, `got ${badIds.rows.length}`);
+
+const foreignIds = await listForExport(SHOP, { ids: ["00000000-0000-0000-0000-000000000000"] });
+ok("an id from another shop matches nothing", foreignIds.rows.length === 0);
+
+const pageFile = await buildExport(page.rows, { formType: "all", format: "csv", scope: "page" });
+ok("a page export says so in its filename", /-page-\d{4}-\d{2}-\d{2}\.csv$/.test(pageFile.filename), pageFile.filename);
+const searchFile = await buildExport(page.rows, { formType: "all", format: "csv", scope: "search" });
+ok("a search export likewise", /-search-\d{4}-\d{2}-\d{2}\.csv$/.test(searchFile.filename), searchFile.filename);
+const allFile = await buildExport(all.rows, { formType: "all", format: "csv", scope: "all" });
+ok("a full export carries no scope marker", /^form-submissions-all-\d{4}-\d{2}-\d{2}\.csv$/.test(allFile.filename), allFile.filename);
+
 /* ------------------------------------------------------------- the files */
 
 const csv = await buildExport(all.rows, { formType: "all", format: "csv" });

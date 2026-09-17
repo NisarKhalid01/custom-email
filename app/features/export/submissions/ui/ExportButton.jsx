@@ -2,6 +2,7 @@ import {
   BlockStack,
   Box,
   Button,
+  Checkbox,
   ChoiceList,
   Popover,
   Text,
@@ -13,8 +14,9 @@ import DownloadButton from "../../ui/DownloadButton.jsx";
 /**
  * Export control for the Form Submissions page.
  *
- * Asks for the format, then downloads. Everything specific to this export lives
- * here; the fetch-and-save mechanics are the shared `DownloadButton`.
+ * Asks what to export and in which format, then downloads. Everything specific
+ * to this export lives here; the fetch-and-save mechanics are the shared
+ * `DownloadButton`.
  *
  * Deliberately self-contained — own popover, own state, own busy and error
  * display — for the same reason as `DeleteRowAction` and `DraftOrderAction`:
@@ -23,6 +25,19 @@ import DownloadButton from "../../ui/DownloadButton.jsx";
  *
  * It reads from its OWN route by GET. The page's `action` still delegates to
  * `deleteSubmissionAction` and is untouched.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT GETS EXPORTED, AND WHY THE DEFAULT IS NOT "EVERYTHING"
+ * ---------------------------------------------------------------------------
+ *   searching       -> every row that matches, across all pages. A search IS the
+ *                      selection; paging through it is incidental.
+ *   not searching   -> exactly the rows on screen, unless "all records" is
+ *                      ticked. Defaulting to the whole table is how someone ends
+ *                      up mailing 75 customers' details to answer one question.
+ *
+ * The form filter applies in every case, so the choice is only ever "this page"
+ * versus "all of what I am looking at" — never "all of something else". The
+ * button label always states the actual number, so there is nothing to infer.
  */
 
 const ENDPOINT = "/app/export/submissions";
@@ -44,9 +59,24 @@ const FORMAT_CHOICES = [
   },
 ];
 
-export default function ExportButton({ form = "all", q = "", count = 0 }) {
+const plural = (n, noun) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+
+/**
+ * @param {string}   form      the page's form-type filter
+ * @param {string}   q         the page's search term
+ * @param {number}   count     rows matching the current filter + search (all pages)
+ * @param {string[]} pageIds   ids of the rows currently on screen
+ */
+export default function ExportButton({ form = "all", q = "", count = 0, pageIds = [] }) {
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState("csv");
+  const [allRecords, setAllRecords] = useState(false);
+
+  const searching = Boolean(q);
+  // Every matching row is already on screen, so "this page" and "all records"
+  // would produce the same file. Offering the choice would be noise.
+  const pageIsEverything = pageIds.length >= count;
+  const exportAll = searching || allRecords || pageIsEverything;
 
   // Whoever exports weekly wants the same format every week. Read after mount so
   // the server and first client render agree.
@@ -72,11 +102,16 @@ export default function ExportButton({ form = "all", q = "", count = 0 }) {
   const params = new URLSearchParams({ format });
   if (form && form !== "all") params.set("form", form);
   if (q) params.set("q", q);
+  // Naming the rows is what makes "this page" mean the rows actually on screen
+  // rather than whatever an offset would have selected.
+  if (!exportAll) params.set("ids", pageIds.join(","));
 
-  // Says what will actually happen. The export honours the page's search and
-  // form filter, so a merchant looking at 12 filtered rows should not be left
-  // wondering whether they are about to download 12 or 75.
-  const label = count === 1 ? "Export 1 submission" : `Export ${count} submissions`;
+  const rowCount = exportAll ? count : pageIds.length;
+  const label = searching
+    ? `Export ${plural(rowCount, "result")}`
+    : exportAll
+      ? `Export all ${plural(rowCount, "record")}`
+      : `Export ${plural(rowCount, "row")} on this page`;
 
   return (
     <Popover
@@ -94,7 +129,7 @@ export default function ExportButton({ form = "all", q = "", count = 0 }) {
         </Button>
       }
     >
-      <Box padding="400" minWidth="320px">
+      <Box padding="400" minWidth="340px">
         <BlockStack gap="300">
           <ChoiceList
             title="Export as"
@@ -102,6 +137,7 @@ export default function ExportButton({ form = "all", q = "", count = 0 }) {
             selected={[format]}
             onChange={choose}
           />
+
           {format === "csv" ? (
             <Text as="p" variant="bodySm" tone="subdued">
               Links are included as plain text.
@@ -111,6 +147,22 @@ export default function ExportButton({ form = "all", q = "", count = 0 }) {
               Product names and attachments are clickable links.
             </Text>
           )}
+
+          {searching ? (
+            // No choice to offer: a search is the selection the merchant just
+            // made, and exporting only part of it would be surprising.
+            <Text as="p" variant="bodySm" tone="subdued">
+              Exports the {plural(count, "row")} matching your search.
+            </Text>
+          ) : pageIsEverything ? null : (
+            <Checkbox
+              label={`Export all ${plural(count, "record")}`}
+              helpText="Otherwise only the rows on this page are exported."
+              checked={allRecords}
+              onChange={setAllRecords}
+            />
+          )}
+
           <DownloadButton
             url={`${ENDPOINT}?${params.toString()}`}
             label={label}
