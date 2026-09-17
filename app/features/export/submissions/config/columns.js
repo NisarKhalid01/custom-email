@@ -18,16 +18,41 @@
  * stops that costing us completeness.
  *
  * ---------------------------------------------------------------------------
- * HEADERS COME FROM labelFor(), NOT FROM STRINGS TYPED HERE
+ * HEADERS ARE THE STOREFRONT FORMS' OWN LABELS
  * ---------------------------------------------------------------------------
- * `config/fields.js` exists so that a form field is called the same thing in the
- * shopper's form, the sales email and the admin page. Typing the names again
- * here would make this a fourth place to update — and that file changes: as
- * recently as 2026-09-16 `logo_colors` became "Logo Color Options".
+ * Every header below is the string the shopper actually saw above that input,
+ * read out of the theme:
  *
- * Two deliberate exceptions, both documented at their definition: the
- * legacy-only keys `labelFor()` has never heard of, and `variation_option`,
- * whose label is VALUE-dependent in the UI and cannot be in a column header.
+ *   logo-mat/snippets/product-request-form.liquid   (the new combined form)
+ *   logo-mat/snippets/quote-form.liquid             (Shipping Info)
+ *   logo-mat/snippets/custom-logo-form.liquid       (Quote Request)
+ *
+ * THE THREE FORMS DISAGREE WITH EACH OTHER. The same `company` field is
+ * "Company / Organization Name" on two of them and "Company Name" on the third;
+ * `zip` is "Zip", "ZIP Code" and "ZIP / Postal Code". A union column cannot
+ * carry three labels, so:
+ *
+ *   THE NEW COMBINED FORM WINS. It merges and replaces both legacy forms, so
+ *   its wording is the one that will still be true in six months. A field only a
+ *   legacy form has — `cartons`, `thickness`, `address`/`address2` — takes that
+ *   form's label, since there is nothing to conflict with.
+ *
+ * Two normalisations, applied consistently and worth knowing about:
+ *
+ *   * a leading "Select " is dropped — "Select Thickness" is an instruction to
+ *     someone looking at a dropdown, not the name of the field. The new form
+ *     already made this change itself ("Size of Mat", where the old one said
+ *     "Select Size").
+ *   * a leading "Your " is dropped — "Your Name" reads correctly above an input
+ *     the shopper is filling in and incorrectly as a column header a salesperson
+ *     is reading, where "your" is no longer the shopper.
+ *
+ * NOT taken from `config/fields.js`. That file is the source of truth for the
+ * admin detail page and the sales email, and its labels are shorter than the
+ * forms' on purpose ("Size", "Liftgate"). Changing it to match the forms would
+ * silently reword a live email and a live page, which is a separate decision
+ * from what a spreadsheet column is called. `labelFor()` is still imported —
+ * it is the fallback for any key this map has not been taught yet.
  */
 
 import { labelFor } from "../../../product-request/config/fields.js";
@@ -70,10 +95,95 @@ function column({ header, forms, value, href = null, consumes = [] }) {
   return { header, forms, value, href, consumes };
 }
 
-/** A column reading one payload key, labelled by `labelFor()`. */
+/**
+ * The storefront forms' own labels, keyed by field name.
+ *
+ * Read from the theme on 2026-09-17. Where the three forms disagree, the new
+ * combined form wins — see the note at the top of this file. `(legacy: …)` marks
+ * a wording the old forms used that is deliberately NOT what appears here.
+ */
+const FORM_FIELD_LABELS = {
+  /* --- contact, from the new form --- */
+  // "Your Name" / "Your Email" on the forms. The possessive is right above an
+  // input the shopper is filling in and wrong on a column a salesperson reads.
+  name: "Name",
+  company: "Company / Organization Name", // (legacy Quote Request: "Company Name")
+  email: "Email Address", // (legacy Quote Request: "Your Email")
+  phone: "Phone", // (legacy Quote Request: "Phone Number")
+
+  /* --- address --- */
+  street: "Street Address", // (legacy Quote Request: "Address")
+  apt: "Apt or Suite #", // (legacy Quote Request: "Address 2 (Optional)")
+  city: "City",
+  state: "State / Province", // (both legacy forms: "State")
+  zip: "ZIP / Postal Code", // (legacy: "Zip" and "ZIP Code")
+  country: "Country",
+
+  /* --- the mat --- */
+  mat_type: "Type of Mat",
+  variant_id: "Size of Mat", // (Shipping Info: "Select Size")
+  quantity: "Quantity of Mats",
+  // Shipping Info only. Its label is "Select Thickness"; the imperative is
+  // dropped, matching what the new form did to "Select Size".
+  thickness: "Thickness",
+  logo_orientation: "Orientation", // (legacy Quote Request: "Logo Orientation")
+  logo_edging: "Edging",
+  logo_corners: "Corners",
+  logo_colors: "Logo Color Options",
+  // "Base Mate Color" is the PDP's own spelling, TYPO AND ALL, and that is
+  // deliberate: the PDP submits `properties[Base Mate Color]`, so real orders
+  // already carry it. Correcting it here would split the field across order
+  // exports. The theme snippet documents this at product-request-form.liquid:182.
+  background_color: "Base Mate Color", // (legacy Quote Request: "Base Mat Color")
+
+  /* --- product options --- */
+  surface: "Surface",
+  style: "Style",
+  backing: "Backing",
+  border: "Border",
+  pattern: "Patterns", // plural on the form
+  line_1: "Line 1",
+  line_2: "Line 2",
+  line_3: "Line 3",
+  line_4: "Line 4",
+  line_5: "Line 5",
+
+  /* --- challenge coins --- */
+  // The form calls this one simply "Quantity": inside the form it sits under a
+  // "Coin Specification" heading, so the context supplies the rest. A flat
+  // spreadsheet has no headings — but there is still no clash, because the mat
+  // quantity is "Quantity of Mats", not "Quantity".
+  coin_quantity: "Quantity",
+  coin_diameter: "Coin Diameter",
+  coin_thickness: "Coin Thickness",
+  coin_metal: "Metal",
+  coin_shape: "Coin Shape",
+
+  /* --- delivery --- */
+  // Verbatim, questions and all. They are the clearest statement of what the
+  // shopper was actually asked, and both forms word them identically.
+  loading_dock: "Does this location have a loading dock?",
+  liftgate: "Does this location need a truck with a liftgate?",
+  cartons: "Number of Rolls", // Shipping Info only
+
+  comments: "Comments / Special Instructions", // (legacy Quote Request: "Specific")
+};
+
+/**
+ * The header for a field.
+ *
+ * The forms first; `labelFor()` from the admin/email config as a fallback, so a
+ * field added to a form tomorrow still gets a sensible header before anyone
+ * updates the map above.
+ */
+function headerFor(key) {
+  return FORM_FIELD_LABELS[key] ?? labelFor(key);
+}
+
+/** A column reading one payload key, labelled as its form labels it. */
 function payloadColumn(key, forms, { header, format = formatText } = {}) {
   return column({
-    header: header ?? labelFor(key),
+    header: header ?? headerFor(key),
     forms,
     value: (_row, payload) => format(payload[key]),
     consumes: [key],
@@ -91,7 +201,7 @@ function payloadColumn(key, forms, { header, format = formatText } = {}) {
  */
 function firstOfColumn(keys, forms, { header, format = formatText } = {}) {
   return column({
-    header: header ?? labelFor(keys[0]),
+    header: header ?? headerFor(keys[0]),
     forms,
     value: (_row, payload) => {
       for (const key of keys) {
@@ -113,10 +223,12 @@ const CORE = [
     value: (row) => FORM_LABELS[row.form_type] || formatText(row.form_type),
   }),
   column({ header: "Submitted", forms: ALL, value: (row) => formatDate(row.created_at) }),
-  column({ header: "Name", forms: ALL, value: (row) => formatText(row.name) }),
-  column({ header: "Company", forms: ALL, value: (row) => formatText(row.company) }),
-  column({ header: "Email", forms: ALL, value: (row) => formatText(row.email) }),
-  column({ header: "Phone", forms: ALL, value: (row) => formatText(row.phone) }),
+  // Read from the table columns, not the payload — but labelled as the forms
+  // label them, because they are the same four questions the shopper answered.
+  column({ header: headerFor("name"), forms: ALL, value: (row) => formatText(row.name) }),
+  column({ header: headerFor("company"), forms: ALL, value: (row) => formatText(row.company) }),
+  column({ header: headerFor("email"), forms: ALL, value: (row) => formatText(row.email) }),
+  column({ header: headerFor("phone"), forms: ALL, value: (row) => formatText(row.phone) }),
 
   // The VERIFIED account address, not the free text the shopper typed into the
   // form. Only the new form collects it, and only when logged in.
@@ -188,8 +300,8 @@ const CORE = [
 ];
 
 const ADDRESS = [
-  firstOfColumn(["street", "address"], ALL, { header: "Street" }),
-  firstOfColumn(["apt", "address2"], ALL, { header: labelFor("apt") }),
+  firstOfColumn(["street", "address"], ALL),
+  firstOfColumn(["apt", "address2"], ALL),
   payloadColumn("city", ALL),
   payloadColumn("state", ALL),
   payloadColumn("zip", ALL),

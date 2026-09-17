@@ -167,9 +167,9 @@ const valueOf = (row, header) => rowToCells(allColumns, row, ctx)[H.indexOf(head
 
 section("Column registry — the six live-data facts");
 
-ok("legacy `address` reaches the Street column", valueOf(legacyRow, "Street").value === "12 High St", valueOf(legacyRow, "Street").value);
-ok("legacy `address2` reaches Apt / Suite", valueOf(legacyRow, "Apt / Suite").value === "Unit 4");
-ok("the new form's `street` reaches the SAME column", valueOf(newRow, "Street").value === "1 Main");
+ok("legacy `address` reaches the Street column", valueOf(legacyRow, "Street Address").value === "12 High St", valueOf(legacyRow, "Street Address").value);
+ok("legacy `address2` reaches Apt or Suite #", valueOf(legacyRow, "Apt or Suite #").value === "Unit 4");
+ok("the new form's `street` reaches the SAME column", valueOf(newRow, "Street Address").value === "1 Main");
 ok("`logo_colors` as an array joins with ; ", valueOf(newRow, "Logo Color Options").value === "Black; Charcoal", valueOf(newRow, "Logo Color Options").value);
 ok("`logo_colors` as a bare string also renders", valueOf(singleColourRow, "Logo Color Options").value === "Brown", valueOf(singleColourRow, "Logo Color Options").value);
 ok("`variant_price` cents become money", valueOf(newRow, "Unit price at request").value === "$124.00", valueOf(newRow, "Unit price at request").value);
@@ -240,19 +240,31 @@ const shipping = headersFor(columnsFor("shipping_form"));
 const quote = headersFor(columnsFor("request_quote"));
 const fresh = headersFor(columnsFor("request_quote_new"));
 
-ok("Shipping Info keeps Cartons and Thickness", shipping.includes("Cartons") && shipping.includes("Thickness"));
+ok("Shipping Info keeps its own two fields, as IT labels them", shipping.includes("Number of Rolls") && shipping.includes("Thickness"));
 ok("Shipping Info has no draft-order columns", !shipping.includes("Order status") && !shipping.includes("Draft order"));
-ok("Shipping Info has no coin columns", !shipping.includes("Coin Metal"));
-ok("Quote Request has no Cartons", !quote.includes("Cartons"));
+ok("Shipping Info has no coin columns", !shipping.includes("Coin Diameter"));
+ok("Quote Request has no Number of Rolls", !quote.includes("Number of Rolls"));
 ok("Quote Request has no Country (never collected)", !quote.includes("Country"));
-ok("the new form has coin columns and variant identifiers", fresh.includes("Coin Metal") && fresh.includes("Variant GID"));
+ok("the new form has coin columns and variant identifiers", fresh.includes("Coin Diameter") && fresh.includes("Variant GID"));
 ok("the new form carries both Shopify status columns", fresh.includes("Payment status") && fresh.includes("Fulfillment status"));
 ok("single-form exports are narrower than the combined one", shipping.length < H.length && quote.length < H.length);
 
 section("Headers");
 
-ok("labels come from fields.js (variant_id -> Size)", H.includes("Size"));
-ok("and its renames follow (logo_colors -> Logo Color Options)", H.includes("Logo Color Options"));
+// Headers are the storefront forms' own labels, read from the theme. The new
+// combined form wins wherever the three disagree.
+ok("variant_id uses the form's label, not fields.js's short one", H.includes("Size of Mat") && !H.includes("Size"));
+ok("quantity is 'Quantity of Mats'", H.includes("Quantity of Mats"));
+ok("coin_quantity is plain 'Quantity', as the form labels it", H.includes("Quantity"));
+ok("…and the two do not collide", H.filter((h) => h === "Quantity").length === 1);
+ok("coin_metal is 'Metal', not an invented 'Coin Metal'", H.includes("Metal") && !H.includes("Coin Metal"));
+ok("coin_diameter keeps 'Coin Diameter' — that IS the form label", H.includes("Coin Diameter"));
+ok("logo_orientation is 'Orientation'", H.includes("Orientation") && !H.includes("Logo Orientation"));
+ok("pattern is plural, as the form has it", H.includes("Patterns"));
+ok("the delivery questions are verbatim", H.includes("Does this location have a loading dock?") && H.includes("Does this location need a truck with a liftgate?"));
+ok("cartons is 'Number of Rolls' from the Shipping Info form", headersFor(columnsFor("shipping_form")).includes("Number of Rolls"));
+ok("'Base Mate Color' keeps the PDP's deliberate typo", H.includes("Base Mate Color"));
+ok("logo_colors -> Logo Color Options", H.includes("Logo Color Options"));
 ok("variation_option gets the static override, not a value-dependent label", H.includes("Color count / Thickness") && !H.includes("Logo Colors"));
 ok("no duplicate headers", new Set(H).size === H.length, H.filter((h, i) => H.indexOf(h) !== i).join(", "));
 

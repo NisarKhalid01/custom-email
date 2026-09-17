@@ -143,7 +143,7 @@ ok("no literal 'undefined' cell", !/(^|,)undefined(,|\r)/.test(csv.body));
 ok("no $NaN", !csv.body.includes("$NaN"));
 
 // The address synonym trap: every form must have a populated Street.
-const streetIndex = headers.indexOf("Street");
+const streetIndex = headers.indexOf("Street Address");
 const { rowToCells } = await import("../app/features/export/submissions/config/columns.js");
 const columns = columnsFor("all");
 const formsWithStreet = new Set(
